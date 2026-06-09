@@ -1,0 +1,483 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════
+   COMMUTER CONNECT — index.css
+   Dark mode via class="dark" on <html> (Tailwind darkMode: 'class').
+
+   HOW THIS WORKS:
+   Tailwind wraps color tokens in rgb() which breaks CSS variables.
+   So instead of relying on the config, we override every color
+   utility class directly here with plain `color: var(--token)`.
+   The .dark {} block switches the variables — everything flips
+   automatically with zero changes to any JSX file.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── CSS Custom Properties ─────────────────────────────────────── */
+:root {
+  --color-bg-primary:      #FFFFFF;
+  --color-bg-secondary:    #F5F5F5;
+  --color-bg-accent:       #E8F5E9;
+
+  --color-primary:         #2E7D32;
+  --color-primary-hover:   #388E3C;
+  --color-primary-dark:    #1B5E20;
+  --color-primary-surface: #E8F5E9;
+
+  --color-cta:             #E84C27;
+  --color-cta-hover:       #C43E1F;
+
+  --color-text-primary:    #111111;
+  --color-text-secondary:  #555555;
+  --color-text-muted:      #888888;
+  --color-text-on-brand:   #FFFFFF;
+
+  --color-border:          #E0E0E0;
+  --color-border-strong:   #BDBDBD;
+
+  --color-success:         #4CAF50;
+  --color-success-bg:      #E8F5E9;
+  --color-warning:         #FFC107;
+  --color-warning-bg:      #FFF8E1;
+  --color-danger:          #E53935;
+  --color-danger-bg:       #FFEBEE;
+  --color-info:            #2196F3;
+  --color-info-bg:         #E3F2FD;
+
+  --color-route-line:      #2E7D32;
+  --color-route-stop:      #E84C27;
+}
+
+.dark {
+  --color-bg-primary:      #1E1E1E;
+  --color-bg-secondary:    #121212;
+  --color-bg-accent:       #1A2E1A;
+
+  --color-primary:         #4CAF50;
+  --color-primary-hover:   #66BB6A;
+  --color-primary-dark:    #388E3C;
+  --color-primary-surface: #1A2E1A;
+
+  --color-cta:             #E84C27;
+  --color-cta-hover:       #FF5733;
+
+  --color-text-primary:    #F0F0F0;
+  --color-text-secondary:  #AAAAAA;
+  --color-text-muted:      #666666;
+  --color-text-on-brand:   #FFFFFF;
+
+  --color-border:          #2C2C2C;
+  --color-border-strong:   #444444;
+
+  --color-success:         #4CAF50;
+  --color-success-bg:      #1E3D23;
+  --color-warning:         #F9A825;
+  --color-warning-bg:      #3D2E00;
+  --color-danger:          #EF5350;
+  --color-danger-bg:       #3D1212;
+  --color-info:            #42A5F5;
+  --color-info-bg:         #0D2137;
+
+  --color-route-line:      #4CAF50;
+  --color-route-stop:      #E84C27;
+}
+
+/* ── Base layer ─────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply font-sans antialiased;
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    overflow-x: hidden;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--color-bg-secondary); }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 999px;
+  }
+}
+
+/* ── Utilities override layer ───────────────────────────────────────
+   We redefine these here so the CSS variable is used directly,
+   bypassing Tailwind's rgb() wrapping that breaks variable references.
+   This makes text-navy, text-sub, bg-surface etc. auto-flip in dark mode.
+   ──────────────────────────────────────────────────────────────────── */
+@layer utilities {
+
+  /* ── Text colors ── */
+  .text-navy   { color: var(--color-text-primary) !important; }
+  .text-sub    { color: var(--color-text-secondary) !important; }
+
+  /* ── Background colors ── */
+  .bg-surface  { background-color: var(--color-bg-secondary) !important; }
+  .bg-white    { background-color: var(--color-bg-primary) !important; }
+
+  /* ── Border colors ── */
+  .border-border { border-color: var(--color-border) !important; }
+
+  /* ── Green brand ── */
+  .text-green  { color: var(--color-primary) !important; }
+  .bg-green    { background-color: var(--color-primary) !important; }
+  .bg-green-light { background-color: var(--color-primary-surface) !important; }
+  .bg-green-dark  { background-color: var(--color-primary-dark) !important; }
+  .border-green   { border-color: var(--color-primary) !important; }
+
+  /* ── CTA ── */
+  .bg-cta      { background-color: var(--color-cta) !important; }
+  .text-cta    { color: var(--color-cta) !important; }
+
+  /* ── Semantic badge backgrounds ── */
+  /* ── Icon / badge semantic backgrounds ── */
+  .bg-green-50,
+  .bg-green-100  { background-color: var(--color-success-bg) !important; }
+  .bg-red-50,
+  .bg-red-100    { background-color: var(--color-danger-bg) !important; }
+  .bg-amber-50,
+  .bg-amber-100  { background-color: var(--color-warning-bg) !important; }
+  .bg-blue-50,
+  .bg-blue-100   { background-color: var(--color-info-bg) !important; }
+  .bg-purple-50,
+  .bg-purple-100 { background-color: #2D1B4E !important; }
+  .bg-emerald-50 { background-color: #1A3D2B !important; }
+
+  /* ── Semantic icon & badge text — bright enough to show on dark bg ── */
+  .text-green-600,
+  .text-green-800  { color: var(--color-success) !important; }
+  .text-red-500,
+  .text-red-600,
+  .text-red-800    { color: var(--color-danger) !important; }
+  .text-amber-500,
+  .text-amber-600,
+  .text-amber-700,
+  .text-amber-800  { color: var(--color-warning) !important; }
+  .text-blue-500,
+  .text-blue-600,
+  .text-blue-800   { color: var(--color-info) !important; }
+  .text-purple-600,
+  .text-purple-700 { color: #B39DDB !important; }
+  .text-emerald-500,
+  .text-emerald-600 { color: #4DB6AC !important; }
+
+  /* ── Muted / slate grays (used in some components) ── */
+  .text-slate-600,
+  .text-slate-500,
+  .text-slate-400,
+  .text-gray-400  { color: var(--color-text-secondary) !important; }
+
+  /* ── Transparent surface variants ── */
+  .bg-surface\/50  { background-color: color-mix(in srgb, var(--color-bg-secondary) 50%, transparent) !important; }
+  .bg-surface\/30  { background-color: color-mix(in srgb, var(--color-bg-secondary) 30%, transparent) !important; }
+  .bg-white\/90    { background-color: color-mix(in srgb, var(--color-bg-primary) 90%, transparent) !important; }
+  .bg-white\/60    { background-color: color-mix(in srgb, var(--color-bg-primary) 60%, transparent) !important; }
+
+  /* ── Misc ── */
+  .bg-slate-50,
+  .bg-slate-100,
+  .bg-gray-50     { background-color: #2A2A2A !important; }
+}
+
+/* ── Components layer ───────────────────────────────────────────── */
+@layer components {
+
+  /* ── Cards ── */
+  .card {
+    background-color: var(--color-bg-primary);
+    border: 0.5px solid var(--color-border);
+    @apply rounded-xl2 shadow-card overflow-hidden;
+  }
+  .card-head {
+    border-bottom: 0.5px solid var(--color-border);
+    @apply flex items-center justify-between px-6 py-4;
+  }
+  .card-body    { @apply p-6; }
+  .card-body-np { @apply overflow-x-auto; }
+
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-card px-4 py-2.5 text-sm font-semibold
+           transition-all duration-200 cursor-pointer border;
+  }
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-text-on-brand);
+    border-color: var(--color-primary);
+    @apply btn hover:shadow-md active:scale-95;
+  }
+  .btn-primary:hover { background-color: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+
+  .btn-cta {
+    background-color: var(--color-cta);
+    color: var(--color-text-on-brand);
+    border-color: var(--color-cta);
+    @apply btn hover:shadow-md active:scale-95;
+  }
+  .btn-cta:hover { background-color: var(--color-cta-hover); }
+
+  .btn-ghost {
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    border-color: var(--color-border);
+    @apply btn;
+  }
+  .btn-ghost:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background-color: var(--color-bg-secondary);
+  }
+
+  .btn-danger {
+    background-color: var(--color-bg-primary);
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+    @apply btn;
+  }
+  .btn-danger:hover { background-color: var(--color-danger-bg); }
+
+  .btn-sm { @apply px-3 py-1.5 text-xs rounded-lg; }
+
+  /* ── Badges ── */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold;
+  }
+  .badge-green  { background-color: var(--color-success-bg);  color: var(--color-success);  @apply badge; }
+  .badge-red    { background-color: var(--color-danger-bg);   color: var(--color-danger);   @apply badge; }
+  .badge-amber  { background-color: var(--color-warning-bg);  color: var(--color-warning);  @apply badge; }
+  .badge-blue   { background-color: var(--color-info-bg);     color: var(--color-info);     @apply badge; }
+  .badge-purple { @apply badge bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300; }
+  .badge-gray   { background-color: var(--color-bg-secondary); color: var(--color-text-secondary); @apply badge; }
+  .badge-dot    { @apply w-1.5 h-1.5 rounded-full bg-current; }
+
+  /* ── Form fields ── */
+  .field-label {
+    color: var(--color-text-secondary);
+    @apply block text-xs font-bold uppercase tracking-wider mb-1.5;
+  }
+  .field-input {
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    @apply w-full rounded-card px-3 py-2.5 text-sm outline-none transition-all;
+  }
+  .field-input::placeholder { color: var(--color-text-muted); }
+  .field-input:focus {
+    border-color: var(--color-primary);
+    background-color: var(--color-bg-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+  .field-select {
+    @apply field-input appearance-none cursor-pointer pr-8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a6a84' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  /* ── Table ── */
+  .data-table { @apply w-full border-collapse; min-width: 560px; }
+  .data-table thead tr { background-color: var(--color-bg-secondary); }
+  .data-table th {
+    color: var(--color-text-secondary);
+    border-bottom: 0.5px solid var(--color-border);
+    @apply text-left px-4 py-3 text-xs font-bold uppercase tracking-wider;
+  }
+  .data-table td {
+    border-bottom: 0.5px solid var(--color-border);
+    color: var(--color-text-primary);
+    @apply px-4 py-3.5 text-sm align-middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tbody tr { @apply transition-colors; }
+  .data-table tbody tr:hover { background-color: var(--color-bg-accent); }
+
+  /* ── Stat card ── */
+  .stat-card { @apply card p-5 hover:-translate-y-0.5 transition-transform duration-200; }
+
+  /* ── Sidebar item ── */
+  .sb-item {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer no-underline
+           transition-all duration-150 border-l-[3px] border-transparent w-full text-left;
+    color: rgba(255,255,255,0.6);
+  }
+  .sb-item:hover { color: #fff; background-color: rgba(255,255,255,0.05); }
+  .sb-item.active {
+    color: #fff;
+    background-color: rgba(46,125,50,0.15);
+    border-left-color: var(--color-primary);
+  }
+
+  /* ── Page fade in ── */
+  .page-enter { @apply animate-fade-in; }
+}
+
+/* ── Misc utilities ─────────────────────────────────────────────── */
+.text-gradient {
+  background: linear-gradient(135deg, #2E7D32, #66BB6A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.brand-gradient { background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%); }
+
+.mini-bar-chart { @apply flex items-end gap-1 h-14; }
+.mini-bar {
+  @apply flex-1 rounded-t transition-all duration-300;
+  background-color: var(--color-primary-surface);
+  min-width: 6px;
+}
+.mini-bar.active { background-color: var(--color-primary); }
+
+
+/* ── Dark mode: suppress card shadows — they glow on dark backgrounds ── */
+.dark .card,
+.dark .stat-card {
+  box-shadow: 0 1px 4px rgba(0,0,0,.35) !important;
+}
+.dark .shadow-card {
+  box-shadow: 0 1px 4px rgba(0,0,0,.35) !important;
+}
+.dark .shadow-md {
+  box-shadow: 0 2px 8px rgba(0,0,0,.45) !important;
+}
+.dark .shadow-lg {
+  box-shadow: 0 4px 12px rgba(0,0,0,.55) !important;
+}
+.dark .shadow-sm {
+  box-shadow: 0 1px 3px rgba(0,0,0,.35) !important;
+}
+
+
+/* ── Dark mode: number spinners + date/time calendar icons ───────────────
+   `color-scheme: dark` tells the browser to render native controls
+   (spinners, calendar icon, dropdown popup) in dark mode.
+   The filter makes the icon itself white/visible on dark backgrounds.   */
+
+/* Always set color-scheme so the picker POPUP is dark too */
+.dark input[type="date"],
+.dark input[type="time"],
+.dark input[type="number"] {
+  color-scheme: dark;
+  background-color: var(--color-bg-secondary) !important;
+}
+
+/* Fallback: target field-input date/time directly */
+.dark .field-input[type="date"]::-webkit-calendar-picker-indicator,
+.dark .field-input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1) !important;
+  opacity: 1 !important;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+}
+
+/* Calendar icon — force white, fully opaque, large hit area */
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1) !important;
+  opacity: 1 !important;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  background-color: transparent;
+  width: 20px;
+  height: 20px;
+}
+.dark input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+
+/* Number spinner arrows — custom styled, always visible in dark mode */
+.dark input[type="number"]::-webkit-inner-spin-button,
+.dark input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: inner-spin-button !important;
+  appearance: inner-spin-button !important;
+  opacity: 1 !important;
+  background: #444444;
+  border-radius: 3px;
+  cursor: pointer;
+  width: 16px;
+  filter: none;
+}
+.dark input[type="number"]::-webkit-inner-spin-button:hover,
+.dark input[type="number"]::-webkit-outer-spin-button:hover {
+  background: #555555;
+}
+
+/* ── Dark mode color transitions — applied only to containers, not all * ── */
+body, .card, .card-head, .card-body, header, aside, main, nav,
+[class*="bg-"], [class*="text-"], [class*="border-"] {
+  transition-property: background-color, color, border-color;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
+}
+
+/* ── Spinners and animated elements — completely isolated from transitions ── */
+.animate-spin,
+.animate-spin *,
+.animate-pulse,
+.animate-blink,
+[class*="animate-"] {
+  transition: none !important;
+  animation-play-state: running !important;
+}
+
+
+
+
+/* ── Light mode: scope icon bg classes so they reset properly ────────────
+   Using html:not(.dark) gives higher specificity than .dark alone,
+   ensuring these classes always flip correctly in both directions.        */
+html:not(.dark) .bg-purple-50,
+html:not(.dark) .bg-purple-100 { background-color: #F3E8FF !important; }
+html:not(.dark) .bg-emerald-50 { background-color: #ECFDF5 !important; }
+html:not(.dark) .bg-slate-100,
+html:not(.dark) .bg-slate-50,
+html:not(.dark) .bg-gray-50    { background-color: #F8FAFC !important; }
+html:not(.dark) .text-purple-600,
+html:not(.dark) .text-purple-700 { color: #7C3AED !important; }
+html:not(.dark) .text-emerald-500,
+html:not(.dark) .text-emerald-600 { color: #059669 !important; }
+
+/* ── Spin keyframe ── */
+@keyframes cc-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: cc-spin 1s linear infinite !important;
+  transition: none !important;
+  will-change: transform;
+  transform-origin: center;
+  display: inline-block;
+}
+
+
+/* ── Ultra-specific spinner fix ─────────────────────────────────────────
+   Tailwind transition-all on parent .btn/.card can cascade to children.
+   This targets the exact spinner div pattern used across all pages.      */
+.rounded-full.animate-spin,
+div.animate-spin {
+  animation: cc-spin 1s linear infinite !important;
+  transition: none !important;
+  will-change: transform !important;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+  transition: none !important;
+}
