@@ -9,5 +9,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  base: '/ComCon-Admin-Deploy',
+  base: process.env.VITE_BASE_PATH || '/ComCon-Admin-Deploy',
 })
