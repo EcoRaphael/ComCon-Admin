@@ -60,10 +60,10 @@ export default function Dashboard() {
       {/* Header banner */}
       <div className="brand-gradient rounded-xl2 p-5 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <p className="text-white/50 text-xs uppercase tracking-widest font-bold mb-1">
-            CommuterConnect · Calbayog City, Samar
+          <p className="text-white/50 text-xs uppercase tracking-widest font-bold mb-1">A Transport Network Vehicle Service
+            A Transport Network Vehicle Service
           </p>
-          <h2 className="text-xl font-extrabold leading-tight">A Transport Network Vehicle Service</h2>
+          <h2 className="text-xl font-extrabold leading-tight">CommuterConnect · Calbayog City, Samar</h2>
           <p className="text-white/60 text-sm mt-1">
             Managing tricycles, pedicabs, timbols & multicabs across Calbayog City
           </p>
