@@ -106,7 +106,7 @@ export default function Ratings() {
 
       {/* Reviews table */}
       <Card>
-        <CardHead title="All Commuter Reviews" subtitle="Objective 4 — organize ratings and commuter feedback" />
+        <CardHead title="All Commuter Reviews" />
 
         <div className="px-5 py-3 border-b border-border flex flex-wrap gap-2 items-center">
           <div className="relative max-w-xs w-full">

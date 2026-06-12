@@ -187,7 +187,6 @@ export default function Drivers() {
       <Card>
         <CardHead
           title="Driver & Vehicle Management"
-          subtitle="Objective 2 — verify driver and vehicle information for reliability and safety"
           action={
             <button className="btn-primary btn-sm flex items-center gap-2" onClick={() => setModalOpen(true)}>
               <Plus className="w-4 h-4" /> Add Driver

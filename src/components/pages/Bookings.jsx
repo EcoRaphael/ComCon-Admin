@@ -90,7 +90,7 @@ export default function Bookings() {
       </div>
 
       <Card>
-        <CardHead title="All Bookings" subtitle="Objective 1 — booking management, ride details & fare inquiries" />
+        <CardHead title="All Bookings"/>
 
         <div className="px-5 py-3 border-b border-border flex flex-wrap gap-2 items-center">
           <div className="relative max-w-xs w-full">

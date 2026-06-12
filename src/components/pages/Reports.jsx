@@ -47,7 +47,7 @@ export default function Reports() {
       </div>
 
       <Card>
-        <CardHead title="Commuter Complaints & Reports" subtitle="Objective 4 — organize reports, ratings, and complaints" />
+        <CardHead title="Commuter Complaints & Reports" />
 
         <div className="px-5 py-3 border-b border-border flex flex-wrap gap-4 items-center justify-between">
           <div className="relative w-full max-w-xs">

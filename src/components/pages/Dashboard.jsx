@@ -182,7 +182,6 @@ export default function Dashboard() {
         <Card>
           <CardHead
             title="Recent Bookings"
-            subtitle="Objective 1 — manage bookings & fare inquiries"
             action={<button className="btn-ghost btn-sm" onClick={() => navigate('/bookings')}>View all</button>}
           />
           <div className="card-body-np">

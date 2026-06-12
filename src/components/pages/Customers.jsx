@@ -49,8 +49,7 @@ export default function Customers() {
       </div>
 
       <Card>
-        <CardHead title="Commuter Accounts" subtitle="Objective 1 — manage user information and account status" />
-
+        <CardHead title="Commuter Accounts" />
         <div className="px-5 py-3 border-b border-border flex flex-wrap gap-2 items-center">
           <div className="relative max-w-xs w-full">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-sub" />
