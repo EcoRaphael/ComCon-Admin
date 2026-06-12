@@ -1,12 +1,10 @@
-// src/components/auth/LoginPage.jsx
 import { useState } from 'react'
 import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useAuth } from '@/lib/AuthContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { Eye, EyeOff, Sun, Moon } from 'lucide-react'
-
-import BackgroundImage from '@/assets/calbayog-cathedral.jpg'
+import AppLogo from '@/assets/logo.png'
 
 export default function LoginPage() {
   const { signIn, isLoggedIn, loadingAuth } = useAuth()
@@ -50,11 +48,11 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-5 relative bg-cover bg-center bg-green-dark"
-      style={{ backgroundImage: `url(${BackgroundImage})` }}
+      className="min-h-screen flex items-center justify-center p-5 relative bg-cover bg-center"
+      style={{ background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 60%, #1B5E20 100%)' }}
     >
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] pointer-events-none" />
+      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
       {/* Dark mode toggle — top right corner */}
       <button
@@ -70,14 +68,9 @@ export default function LoginPage() {
 
       <div className="w-full max-w-[400px] z-10">
 
-        {/* Brand */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-black text-white tracking-tighter">
-            Commuter<span className="text-cta">Connect</span>
-          </h1>
-          <p className="text-white/60 text-[10px] uppercase tracking-[0.4em] font-bold mt-1">
-            Admin Panel · Calbayog City
-          </p>
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <img src={AppLogo} alt="CommuterConnect" className="h-28 w-auto object-contain drop-shadow-2xl" />
         </div>
 
         {/* Card */}
