@@ -215,7 +215,6 @@ export default function Dashboard() {
         <Card>
           <CardHead
             title="Recent Complaints"
-            subtitle="Objective 4 — organize reports & complaints"
             action={<button className="btn-ghost btn-sm" onClick={() => navigate('/reports')}>View all</button>}
           />
           <div className="card-body-np">
@@ -252,7 +251,6 @@ export default function Dashboard() {
         <Card>
           <CardHead
             title="Top Drivers"
-            subtitle="Objective 2 — verified & rated drivers"
             action={<button className="btn-ghost btn-sm" onClick={() => navigate('/drivers')}>View all</button>}
           />
           <div className="card-body divide-y divide-border">
@@ -295,7 +293,7 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHead title="System Activity Log" subtitle="Objective 3 — monitor & record transactions" />
+          <CardHead title="System Activity Log" />
           <div className="card-body space-y-3">
             {loading ? (
               <div className="flex justify-center items-center h-32">
