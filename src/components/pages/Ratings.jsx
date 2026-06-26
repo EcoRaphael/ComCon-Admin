@@ -32,13 +32,27 @@ export default function Ratings() {
   const [filterStar, setFilterStar] = useState('all')
   const [selected,   setSelected]   = useState(null)
 
-  useEffect(() => { fetchRatings() }, [])
+  useEffect(() => {
+    fetchRatings()
+    // Realtime: re-fetch whenever a new rating is inserted by commuter app
+    const channel = supabase
+      .channel('ratings-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ratings' }, () => {
+        fetchRatings()
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [])
 
   async function fetchRatings() {
     setLoading(true)
     const { data, error } = await supabase
       .from('ratings')
-      .select('*, users!customer_id(name, email), drivers!driver_id(name, vehicle_type, plate)')
+      .select(`
+      *,
+      customer:users!ratings_customer_id_fkey ( name, email ),
+      driver:drivers!ratings_driver_id_fkey   ( name, vehicle_type, plate )
+    `)
       .order('created_at', { ascending: false })
     if (error) { toast('Failed to load ratings'); console.error(error) }
     else setRatings(data || [])
@@ -46,19 +60,19 @@ export default function Ratings() {
   }
 
   const filtered = ratings.filter(r => {
-    const matchStar = filterStar === 'all' ? true : Math.round(r.rating) === Number(filterStar)
+    const matchStar = filterStar === 'all' ? true : Math.round(r.stars) === Number(filterStar)
     const q = search.toLowerCase()
     const matchSearch = search === '' ||
-      r.users?.name?.toLowerCase().includes(q) ||
-      r.drivers?.name?.toLowerCase().includes(q) ||
+      r.customer?.name?.toLowerCase().includes(q) ||
+      r.driver?.name?.toLowerCase().includes(q) ||
       r.comment?.toLowerCase().includes(q)
     return matchStar && matchSearch
   })
 
   const total    = ratings.length
-  const avgScore = total ? (ratings.reduce((s, r) => s + Number(r.rating), 0) / total).toFixed(1) : '0.0'
-  const positive = ratings.filter(r => r.rating >= 4).length
-  const negative = ratings.filter(r => r.rating <= 2).length
+  const avgScore = total ? (ratings.reduce((s, r) => s + Number(r.stars), 0) / total).toFixed(1) : '0.0'
+  const positive = ratings.filter(r => r.stars >= 4).length
+  const negative = ratings.filter(r => r.stars <= 2).length
   const r = selected
 
   return (
@@ -106,7 +120,7 @@ export default function Ratings() {
 
       {/* Reviews table */}
       <Card>
-        <CardHead title="All Commuter Reviews" />
+        <CardHead title="All Commuter Reviews" subtitle="Objective 4 — organize ratings and commuter feedback" />
 
         <div className="px-5 py-3 border-b border-border flex flex-wrap gap-2 items-center">
           <div className="relative max-w-xs w-full">
@@ -160,21 +174,21 @@ export default function Ratings() {
                     <td>
                       <div className="flex items-center gap-2">
                         <Avatar
-                          initials={r.users?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'CO'}
+                          initials={r.customer?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'CO'}
                           color="#1565c0"
                           size="sm"
                         />
-                        <span className="font-semibold text-sm">{r.users?.name || '—'}</span>
+                        <span className="font-semibold text-sm">{r.customer?.name || '—'}</span>
                       </div>
                     </td>
                     <td>
-                      <p className="text-sm font-medium">{r.drivers?.name || '—'}</p>
-                      <p className="text-xs text-sub">{r.drivers?.vehicle_type || ''}</p>
+                      <p className="text-sm font-medium">{r.driver?.name || '—'}</p>
+                      <p className="text-xs text-sub">{r.driver?.vehicle_type || ''}</p>
                     </td>
                     <td>
                       <div className="flex items-center gap-1.5">
-                        <StarDisplay value={r.rating} />
-                        <span className="text-xs font-bold text-amber-500">{Number(r.rating).toFixed(1)}</span>
+                        <StarDisplay value={r.stars} />
+                        <span className="text-xs font-bold text-amber-500">{Number(r.stars).toFixed(1)}</span>
                       </div>
                     </td>
                     <td className="max-w-[200px]">
@@ -204,8 +218,8 @@ export default function Ratings() {
 
             {/* Stars */}
             <div className="flex flex-col items-center gap-2 py-3 bg-surface rounded-xl">
-              <StarDisplay value={r.rating} size={28} />
-              <span className="text-3xl font-black text-navy">{Number(r.rating).toFixed(1)}</span>
+              <StarDisplay value={r.stars} size={28} />
+              <span className="text-3xl font-black text-navy">{Number(r.stars).toFixed(1)}</span>
               <span className="text-xs text-sub">out of 5.0</span>
             </div>
 
@@ -213,13 +227,13 @@ export default function Ratings() {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface rounded-xl p-3">
                 <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1">Commuter</p>
-                <p className="font-semibold text-sm text-navy">{r.users?.name || '—'}</p>
-                <p className="text-xs text-sub">{r.users?.email || ''}</p>
+                <p className="font-semibold text-sm text-navy">{r.customer?.name || '—'}</p>
+                <p className="text-xs text-sub">{r.customer?.email || ''}</p>
               </div>
               <div className="bg-surface rounded-xl p-3">
                 <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1">Driver</p>
-                <p className="font-semibold text-sm text-navy">{r.drivers?.name || '—'}</p>
-                <p className="text-xs text-sub">{r.drivers?.vehicle_type || ''} · {r.drivers?.plate || ''}</p>
+                <p className="font-semibold text-sm text-navy">{r.driver?.name || '—'}</p>
+                <p className="text-xs text-sub">{r.driver?.vehicle_type || ''} · {r.driver?.plate || ''}</p>
               </div>
             </div>
 
