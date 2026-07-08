@@ -143,8 +143,9 @@ export default function Bookings() {
                     <td className="font-bold text-green">₱{Number(b.fare || 0).toFixed(2)}</td>
                     <td>
                       <span className={`badge ${
-                        b.payment_status === 'paid'     ? 'badge-green' :
-                        b.payment_status === 'refunded' ? 'badge-blue'  : 'badge-amber'
+                        b.payment_status === 'paid'      ? 'badge-green' :
+                        b.payment_status === 'refunded'  ? 'badge-blue'  :
+                        b.payment_status === 'cancelled' ? 'badge-gray'  : 'badge-amber'
                       }`}>
                         <span className="badge-dot" />{b.payment_status}
                       </span>
@@ -232,8 +233,9 @@ export default function Bookings() {
               <div className="bg-surface rounded-xl p-3 text-center">
                 <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5">Payment</p>
                 <span className={`badge text-[10px] ${
-                  b.payment_status === 'paid'     ? 'badge-green' :
-                  b.payment_status === 'refunded' ? 'badge-blue'  : 'badge-amber'
+                  b.payment_status === 'paid'      ? 'badge-green' :
+                  b.payment_status === 'refunded'  ? 'badge-blue'  :
+                  b.payment_status === 'cancelled' ? 'badge-gray'  : 'badge-amber'
                 }`}>
                   <span className="badge-dot" />{b.payment_status || 'unpaid'}
                 </span>

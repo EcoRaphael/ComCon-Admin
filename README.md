@@ -55,8 +55,8 @@ git -v
 ### 2. Clone the repository
 
 ```bash
-git clone https://github.com/EcoRaphael/ComCon-Admin-Deploy.git
-cd ComCon-Admin-Deploy
+git clone https://github.com/EcoRaphael/ComCon-Admin.git
+cd ComCon-Admin
 ```
 
 > Replace the URL above with your team's actual GitHub repo link if different.
@@ -176,7 +176,6 @@ commuterconnect-admin/
 | Vehicle  | Base Fare | Per KM | Peak |
 | -------- | --------- | ------ | ---- |
 | Tricycle | ₱10.00    | ₱2.00  | +10% |
-| Pedicab  | ₱8.00     | ₱1.50  | None |
 | Timbol   | ₱12.00    | ₱2.50  | +10% |
 | Multicab | ₱15.00    | ₱3.00  | +15% |
 
