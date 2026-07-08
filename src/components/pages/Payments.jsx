@@ -22,10 +22,10 @@ import {
 } from 'lucide-react'
 
 const STATUS_STYLES = {
-  paid:     'bg-green-100 text-green-800 border-green-200',
-  pending:  'bg-amber-100 text-amber-800 border-amber-200',
-  refunded: 'bg-blue-100 text-blue-800 border-blue-200',
-  failed:   'bg-red-100 text-red-800 border-red-200',
+  completed: 'bg-green-100 text-green-800 border-green-200',
+  pending:   'bg-amber-100 text-amber-800 border-amber-200',
+  refunded:  'bg-blue-100 text-blue-800 border-blue-200',
+  failed:    'bg-red-100 text-red-800 border-red-200',
 }
 
 const METHOD_ICONS = {
@@ -73,7 +73,7 @@ export default function Payments() {
       .from('payments')
       .update({
         status:  newStatus,
-        paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
+        paid_at: newStatus === 'completed' ? new Date().toISOString() : null,
       })
       .eq('id', id)
 
@@ -82,7 +82,7 @@ export default function Payments() {
     } else {
       toast(`Payment marked as ${newStatus}`)
       setPayments(prev => prev.map(p =>
-        p.id === id ? { ...p, status: newStatus, paid_at: newStatus === 'paid' ? new Date().toISOString() : p.paid_at } : p
+        p.id === id ? { ...p, status: newStatus, paid_at: newStatus === 'completed' ? new Date().toISOString() : p.paid_at } : p
       ))
     }
     setUpdating(null)
@@ -126,7 +126,7 @@ export default function Payments() {
 
   const stats = {
     total: payments.length,
-    revenue: payments.filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.amount || 0), 0),
+    revenue: payments.filter(p => p.status === 'completed').reduce((s, p) => s + Number(p.amount || 0), 0),
     pending: payments.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount || 0), 0),
     refunded: payments.filter(p => p.status === 'refunded').length
   }
@@ -185,12 +185,12 @@ export default function Payments() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/50">
           <div className="flex gap-1.5 overflow-x-auto">
-            {['all', 'paid', 'pending', 'refunded', 'failed'].map(f => (
+            {['all', 'completed', 'pending', 'refunded', 'failed'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-4 py-1.5 rounded-full text-xs font-bold capitalize transition-all border ${
                   filter === f ? 'bg-green text-white border-green' : 'bg-white text-sub border-border hover:border-green'
                 }`}>
-                {f}
+                {f === 'completed' ? 'Paid' : f}
               </button>
             ))}
           </div>
@@ -255,7 +255,7 @@ export default function Payments() {
                         className={`text-[10px] px-3 py-1 rounded-full border font-bold uppercase tracking-tighter cursor-pointer appearance-none text-center ${STATUS_STYLES[p.status]}`}
                       >
                         <option value="pending">Pending</option>
-                        <option value="paid">Paid</option>
+                        <option value="completed">Paid</option>
                         <option value="refunded">Refunded</option>
                         <option value="failed">Failed</option>
                       </select>

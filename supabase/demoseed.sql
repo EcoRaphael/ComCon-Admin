@@ -114,7 +114,7 @@ SELECT
   b.driver_id,
   b.fare,
   (ARRAY['cash','gcash','maya'])[1 + (random()*2)::int],
-  'paid',
+  'completed',
   b.created_at + INTERVAL '10 minutes',
   b.created_at
 FROM bookings b

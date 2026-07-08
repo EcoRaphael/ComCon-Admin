@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS payments (
   id             UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   booking_id     UUID REFERENCES bookings(id) ON DELETE CASCADE,
   customer_id    UUID REFERENCES users(id) ON DELETE SET NULL,
+  driver_id      UUID REFERENCES drivers(id) ON DELETE SET NULL,
   amount         NUMERIC(10,2) NOT NULL,
   method         TEXT NOT NULL DEFAULT 'cash'
                    CHECK (method IN ('cash', 'gcash', 'maya', 'bank')),
