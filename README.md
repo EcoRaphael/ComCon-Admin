@@ -1,33 +1,36 @@
 # CommuterConnect Admin Panel
-### Web-Based Transportation Platform — Calbayog City, Samar
+
+### A Transport Network Vehicle Service — Calbayog City, Samar
+
 ### React + Vite + Tailwind CSS + Supabase
 
 ---
 
 ## 📖 About
 
-CommuterConnect is a web-based transportation management platform for **Calbayog City, Samar**,
-built for native transport types: **tricycles, pedicabs, timbols, and multicabs**.
+CommuterConnect is A Transport Network Vehicle Service for **Calbayog City, Samar**,
+built for native transport types: **tricycles, timbols, and multicabs**.
 
 This is the **Admin Panel** — one of three apps in the CommuterConnect system:
 
-| App | Purpose |
-|---|---|
+| App                            | Purpose                                                             |
+| ------------------------------ | ------------------------------------------------------------------- |
 | 🛠️ **Admin Panel** (this repo) | Verify drivers, manage bookings, fares, reports, ratings, analytics |
-| 🧑 **Commuter App** | Book rides, rate drivers, file reports |
-| 🛺 **Driver App** | Accept trips, update location, manage earnings |
+| 🧑 **Commuter App**            | Book rides, rate drivers, file reports                              |
+| 🛺 **Driver App**              | Accept trips, update location, manage earnings                      |
 
 All three share the **same Supabase project/database**, so they must use the **same
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`** to see the same live data.
 
 ### System Objectives
-| # | Objective | Admin Pages |
-|---|-----------|-------------|
-| 1 | Manage bookings, user info, ride details, and fare inquiries | Bookings, Commuters, Fares |
-| 2 | Verify vehicle and driver information for reliability and safety | Drivers |
-| 3 | Monitor system activity and record transactions | Analytics, Live Map |
-| 4 | Organize reports, ratings, and complaints | Reports, Ratings |
-| 5 | Generate ride records, booking confirmations and fare details | Records |
+
+| #   | Objective                                                        | Admin Pages                |
+| --- | ---------------------------------------------------------------- | -------------------------- |
+| 1   | Manage bookings, user info, ride details, and fare inquiries     | Bookings, Commuters, Fares |
+| 2   | Verify vehicle and driver information for reliability and safety | Drivers                    |
+| 3   | Monitor system activity and record transactions                  | Analytics, Live Map        |
+| 4   | Organize reports, ratings, and complaints                        | Reports, Ratings           |
+| 5   | Generate ride records, booking confirmations and fare details    | Records                    |
 
 ---
 
@@ -37,30 +40,37 @@ Follow these steps exactly — this lets you run the admin panel on your own lap
 and see the **same live data** as everyone else on the team.
 
 ### 1. Install prerequisites
+
 - **Node.js** v18 or higher → [nodejs.org](https://nodejs.org) (download the LTS version)
 - **Git** → [git-scm.com](https://git-scm.com)
 - A code editor like **VS Code** (recommended)
 
 Check they're installed by opening a terminal (PowerShell / Terminal) and running:
+
 ```bash
 node -v
 git -v
 ```
 
 ### 2. Clone the repository
+
 ```bash
 git clone https://github.com/EcoRaphael/ComCon-Admin-Deploy.git
 cd ComCon-Admin-Deploy
 ```
+
 > Replace the URL above with your team's actual GitHub repo link if different.
 
 ### 3. Install dependencies
+
 ```bash
 npm install
 ```
+
 This will take a minute — it downloads all the packages the project needs.
 
 ### 4. Set up environment variables
+
 Create a new file named **`.env.local`** in the project root (same folder as `package.json`)
 and paste in the team's shared Supabase credentials:
 
@@ -81,15 +91,19 @@ VITE_APP_REGION=Samar
 > and should only exist on a secure backend, never in this file.
 
 ### 5. Run the app locally
+
 ```bash
 npm run dev
 ```
+
 Then open the URL shown in the terminal — usually:
+
 ```
 http://localhost:5173
 ```
 
 ### 6. Log in
+
 Use the admin account credentials shared by your project lead, or sign up a test
 commuter/driver account through the commuter/driver apps to test the full flow.
 
@@ -160,7 +174,7 @@ commuterconnect-admin/
 ## 🛺 Vehicle Types (Calbayog City)
 
 | Vehicle  | Base Fare | Per KM | Peak |
-|----------|-----------|--------|------|
+| -------- | --------- | ------ | ---- |
 | Tricycle | ₱10.00    | ₱2.00  | +10% |
 | Pedicab  | ₱8.00     | ₱1.50  | None |
 | Timbol   | ₱12.00    | ₱2.50  | +10% |
