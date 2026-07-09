@@ -208,7 +208,7 @@ If you're setting up the Supabase backend from scratch instead of using the shar
 ## 💳 About Online Payments
 
 The **Payments** page in this admin panel is a **manual verification ledger**, not a
-live payment gateway. Drivers/admins record that a fare was paid (cash, GCash, Maya,
+live payment gateway. Drivers/Admins record that a fare was paid (cash, GCash, Maya,
 or bank) and manually enter a reference number; admin then confirms the status.
 
 **There is currently no automated online payment processing** (no PayMongo, Stripe,
