@@ -6,43 +6,51 @@ import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard, Modal } from '@/components/ui'
 import Spinner from '@/components/ui/Spinner'
 import {
-  Calendar, 
-  CheckCircle2, 
-  Car, 
+  Calendar,
+  CheckCircle2,
+  Car,
   PauseCircle,
-  List, 
-  LayoutGrid, 
-  Plus, 
-  X, 
+  List,
+  LayoutGrid,
+  Plus,
+  X,
   Clock,
-  Trash2, 
-  Play, 
-  Pause, 
-  AlertCircle, 
-  Edit3, 
+  Trash2,
+  Play,
+  Pause,
+  AlertCircle,
+  Edit3,
   Save
 } from 'lucide-react'
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+// IMPORTANT: the database only accepts abbreviated codes ('Mon','Tue',...).
+// DAYS below is the source of truth for form values, sorting, and filtering.
+// DAY_FULL is used only for nicer display labels — never sent to the DB.
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+const DAY_FULL = {
+  Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday',
+  Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday',
+}
 
 const DAY_SHORT = {
-  Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed',
-  Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun',
+  Mon: 'Mon', Tue: 'Tue', Wed: 'Wed',
+  Thu: 'Thu', Fri: 'Fri', Sat: 'Sat', Sun: 'Sun',
 }
 
 const DAY_COLORS = {
-  Monday:    'bg-blue-50 text-blue-600',
-  Tuesday:   'bg-purple-50 text-purple-600',
-  Wednesday: 'bg-green-light text-green',
-  Thursday:  'bg-amber-50 text-amber-600',
-  Friday:    'bg-red-50 text-red-600',
-  Saturday:  'bg-pink-100 text-pink-800',
-  Sunday:    'bg-gray-100 text-gray-600',
+  Mon: 'bg-blue-50 text-blue-600',
+  Tue: 'bg-purple-50 text-purple-600',
+  Wed: 'bg-green-light text-green',
+  Thu: 'bg-amber-50 text-amber-600',
+  Fri: 'bg-red-50 text-red-600',
+  Sat: 'bg-pink-100 text-pink-800',
+  Sun: 'bg-gray-100 text-gray-600',
 }
 
 function calcHours(start, end) {
   const [sh, sm] = (start || '00:00').split(':').map(Number)
-  const [eh, em] = (end   || '00:00').split(':').map(Number)
+  const [eh, em] = (end || '00:00').split(':').map(Number)
   const diff = (eh * 60 + em) - (sh * 60 + sm)
   if (diff <= 0) return '—'
   const h = Math.floor(diff / 60)
@@ -51,7 +59,7 @@ function calcHours(start, end) {
 }
 
 const EMPTY_FORM = {
-  driver_id: '', day_of_week: 'Monday',
+  driver_id: '', day_of_week: 'Mon',
   start_time: '06:00', end_time: '18:00', is_active: true,
 }
 
@@ -59,25 +67,25 @@ const initials = (name) =>
   name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'DR'
 
 export default function Schedules() {
-  const { drivers }  = useAdmin()
-  const { toast }    = useToastCtx()
+  const { drivers } = useAdmin()
+  const { toast } = useToastCtx()
 
-  const [schedules,    setSchedules]    = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [saving,       setSaving]       = useState(false)
-  const [deleting,     setDeleting]     = useState(null)
-  const [showForm,     setShowForm]     = useState(false)
+  const [schedules, setSchedules] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(null)
+  const [showForm, setShowForm] = useState(false)
   const [filterDriver, setFilterDriver] = useState('all')
-  const [filterDay,    setFilterDay]    = useState('all')
-  const [view,         setView]         = useState('list')
+  const [filterDay, setFilterDay] = useState('all')
+  const [view, setView] = useState('list')
 
   // Add form state
   const [form, setForm] = useState(EMPTY_FORM)
 
   // Edit modal state
-  const [editTarget, setEditTarget]   = useState(null)   // schedule being edited
-  const [editForm,   setEditForm]     = useState(null)   // edit form values
-  const [updating,   setUpdating]     = useState(false)
+  const [editTarget, setEditTarget] = useState(null)   // schedule being edited
+  const [editForm, setEditForm] = useState(null)   // edit form values
+  const [updating, setUpdating] = useState(false)
 
   useEffect(() => { fetchSchedules() }, [])
 
@@ -106,11 +114,11 @@ export default function Schedules() {
 
     setSaving(true)
     const { data, error } = await supabase.from('schedules').insert({
-      driver_id:   form.driver_id,
+      driver_id: form.driver_id,
       day_of_week: form.day_of_week,
-      start_time:  form.start_time,
-      end_time:    form.end_time,
-      is_active:   form.is_active,
+      start_time: form.start_time,
+      end_time: form.end_time,
+      is_active: form.is_active,
     }).select('*, drivers(name, vehicle_type, plate, color, status, route)').single()
 
     if (error) {
@@ -128,11 +136,11 @@ export default function Schedules() {
   function openEdit(s) {
     setEditTarget(s)
     setEditForm({
-      driver_id:   s.driver_id,
+      driver_id: s.driver_id,
       day_of_week: s.day_of_week,
-      start_time:  s.start_time?.slice(0, 5) || '06:00',
-      end_time:    s.end_time?.slice(0, 5)   || '18:00',
-      is_active:   s.is_active,
+      start_time: s.start_time?.slice(0, 5) || '06:00',
+      end_time: s.end_time?.slice(0, 5) || '18:00',
+      is_active: s.is_active,
     })
   }
 
@@ -147,8 +155,8 @@ export default function Schedules() {
     // Check for conflict with another schedule (excluding self)
     const conflict = schedules.find(
       s => s.driver_id === editForm.driver_id &&
-           s.day_of_week === editForm.day_of_week &&
-           s.id !== editTarget.id
+        s.day_of_week === editForm.day_of_week &&
+        s.id !== editTarget.id
     )
     if (conflict) { toast(`This driver already has a ${editForm.day_of_week} schedule`); return }
 
@@ -157,9 +165,9 @@ export default function Schedules() {
       .from('schedules')
       .update({
         day_of_week: editForm.day_of_week,
-        start_time:  editForm.start_time,
-        end_time:    editForm.end_time,
-        is_active:   editForm.is_active,
+        start_time: editForm.start_time,
+        end_time: editForm.end_time,
+        is_active: editForm.is_active,
       })
       .eq('id', editTarget.id)
 
@@ -201,7 +209,7 @@ export default function Schedules() {
 
   const filtered = useMemo(() => schedules.filter(s => {
     const matchDriver = filterDriver === 'all' ? true : s.driver_id === filterDriver
-    const matchDay    = filterDay   === 'all' ? true : s.day_of_week === filterDay
+    const matchDay = filterDay === 'all' ? true : s.day_of_week === filterDay
     return matchDriver && matchDay
   }), [schedules, filterDriver, filterDay])
 
@@ -212,7 +220,7 @@ export default function Schedules() {
     return acc
   }, {}), [filtered])
 
-  const activeCount   = schedules.filter(s => s.is_active).length
+  const activeCount = schedules.filter(s => s.is_active).length
   const uniqueDrivers = [...new Set(schedules.map(s => s.driver_id))].length
 
   const weeklyData = useMemo(() =>
@@ -220,7 +228,7 @@ export default function Schedules() {
       day,
       count: schedules.filter(s => s.day_of_week === day && s.is_active).length,
     }))
-  , [schedules])
+    , [schedules])
 
   const maxCount = Math.max(...weeklyData.map(d => d.count), 1)
 
@@ -238,9 +246,8 @@ export default function Schedules() {
       {/* Pause / Activate */}
       <button
         onClick={() => handleToggle(s.id, s.is_active)}
-        className={`p-1.5 rounded-lg transition-colors ${
-          s.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-green hover:bg-green-light'
-        }`}
+        className={`p-1.5 rounded-lg transition-colors ${s.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-green hover:bg-green-light'
+          }`}
         title={s.is_active ? 'Pause' : 'Activate'}
       >
         {s.is_active ? <Pause size={size} /> : <Play size={size} />}
@@ -272,15 +279,13 @@ export default function Schedules() {
         <div className="flex gap-2">
           <div className="flex gap-1 bg-surface rounded-lg p-1 border border-border">
             <button onClick={() => setView('list')}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                view === 'list' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
-              }`}>
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 ${view === 'list' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
+                }`}>
               <List size={16} /> List
             </button>
             <button onClick={() => setView('grid')}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                view === 'grid' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
-              }`}>
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 ${view === 'grid' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
+                }`}>
               <LayoutGrid size={16} /> Grid
             </button>
           </div>
@@ -292,10 +297,10 @@ export default function Schedules() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard icon={<Calendar    size={20} className="text-green"      />} iconBg="bg-green-light" value={schedules.length}               label="Total Schedules"   />
-        <StatCard icon={<CheckCircle2 size={20} className="text-blue-600"  />} iconBg="bg-blue-50"     value={activeCount}                    label="Active"            />
-        <StatCard icon={<Car          size={20} className="text-amber-600" />} iconBg="bg-amber-50"    value={uniqueDrivers}                  label="Drivers Scheduled" />
-        <StatCard icon={<PauseCircle  size={20} className="text-red-600"   />} iconBg="bg-red-50"      value={schedules.length - activeCount} label="Paused"            />
+        <StatCard icon={<Calendar size={20} className="text-green" />} iconBg="bg-green-light" value={schedules.length} label="Total Schedules" />
+        <StatCard icon={<CheckCircle2 size={20} className="text-blue-600" />} iconBg="bg-blue-50" value={activeCount} label="Active" />
+        <StatCard icon={<Car size={20} className="text-amber-600" />} iconBg="bg-amber-50" value={uniqueDrivers} label="Drivers Scheduled" />
+        <StatCard icon={<PauseCircle size={20} className="text-red-600" />} iconBg="bg-red-50" value={schedules.length - activeCount} label="Paused" />
       </div>
 
       {/* Add form */}
@@ -326,7 +331,7 @@ export default function Schedules() {
                 <label className="field-label">Day *</label>
                 <select className="field-select" value={form.day_of_week}
                   onChange={e => setForm(p => ({ ...p, day_of_week: e.target.value }))}>
-                  {DAYS.map(d => <option key={d}>{d}</option>)}
+                  {DAYS.map(d => <option key={d} value={d}>{DAY_FULL[d]}</option>)}
                 </select>
               </div>
               <div>
@@ -381,14 +386,12 @@ export default function Schedules() {
         </select>
         <div className="flex gap-2 flex-wrap">
           <button onClick={() => setFilterDay('all')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              filterDay === 'all' ? 'bg-green text-white' : 'bg-white border border-border text-sub hover:border-green'
-            }`}>All Days</button>
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterDay === 'all' ? 'bg-green text-white' : 'bg-white border border-border text-sub hover:border-green'
+              }`}>All Days</button>
           {DAYS.map(d => (
             <button key={d} onClick={() => setFilterDay(d)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                filterDay === d ? 'bg-green text-white' : 'bg-white border border-border text-sub hover:border-green'
-              }`}>{DAY_SHORT[d]}</button>
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterDay === d ? 'bg-green text-white' : 'bg-white border border-border text-sub hover:border-green'
+                }`}>{DAY_SHORT[d]}</button>
           ))}
         </div>
       </div>
@@ -447,7 +450,7 @@ export default function Schedules() {
                         </span>
                       </td>
                       <td className="px-4 py-3 font-mono text-sm text-navy">
-                        {s.start_time?.slice(0,5)} → {s.end_time?.slice(0,5)}
+                        {s.start_time?.slice(0, 5)} → {s.end_time?.slice(0, 5)}
                       </td>
                       <td className="px-4 py-3 text-xs text-sub">
                         {calcHours(s.start_time, s.end_time)}
@@ -495,14 +498,13 @@ export default function Schedules() {
                   .sort((a, b) => DAYS.indexOf(a.day_of_week) - DAYS.indexOf(b.day_of_week))
                   .map(s => (
                     <div key={s.id}
-                      className={`flex items-center gap-4 px-5 py-3 transition-colors ${
-                        !s.is_active ? 'opacity-50 bg-gray-50' : 'hover:bg-surface/50'
-                      }`}>
+                      className={`flex items-center gap-4 px-5 py-3 transition-colors ${!s.is_active ? 'opacity-50 bg-gray-50' : 'hover:bg-surface/50'
+                        }`}>
                       <span className={`text-xs font-bold px-2 py-1 rounded-full w-20 text-center flex-shrink-0 ${DAY_COLORS[s.day_of_week]}`}>
                         {DAY_SHORT[s.day_of_week]}
                       </span>
                       <span className="font-mono text-sm text-navy flex-1">
-                        {s.start_time?.slice(0,5)} → {s.end_time?.slice(0,5)}
+                        {s.start_time?.slice(0, 5)} → {s.end_time?.slice(0, 5)}
                         <span className="text-sub text-xs ml-2">({calcHours(s.start_time, s.end_time)})</span>
                       </span>
                       <ActionButtons s={s} size={14} />
@@ -569,7 +571,7 @@ export default function Schedules() {
               <label className="field-label">Day of Week</label>
               <select className="field-select" value={editForm.day_of_week}
                 onChange={e => setEditForm(p => ({ ...p, day_of_week: e.target.value }))}>
-                {DAYS.map(d => <option key={d}>{d}</option>)}
+                {DAYS.map(d => <option key={d} value={d}>{DAY_FULL[d]}</option>)}
               </select>
             </div>
 
