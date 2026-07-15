@@ -226,7 +226,7 @@ export function AdminProvider({ children }) {
     cancelledBookings:   bookings.filter(b => b.status === 'cancelled').length,
     openReports:         reports.filter(r => r.status !== 'resolved').length,
     highSeverityReports: reports.filter(r => r.severity === 'High').length,
-    totalRevenue:        payments.filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.amount || 0), 0),
+    totalRevenue:        payments.filter(p => p.status === 'completed').reduce((s, p) => s + Number(p.amount || 0), 0),
     avgRating:           drivers.length ? (drivers.reduce((s, d) => s + Number(d.rating || 0), 0) / drivers.length).toFixed(1) : '0.0',
     totalRoutes:         routes.filter(r => r.status === 'active').length,
     totalVehicles:       vehicles.length,

@@ -38,7 +38,7 @@ export default function Analytics() {
       
       const dayBookings = bookings.filter(b => b.created_at?.startsWith(dateStr))
       const dayRevenue = payments
-        .filter(p => p.status === 'paid' && p.created_at?.startsWith(dateStr))
+        .filter(p => p.status === 'completed' && p.created_at?.startsWith(dateStr))
         .reduce((s, p) => s + Number(p.amount || 0), 0)
 
       return {
