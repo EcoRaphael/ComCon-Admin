@@ -22,6 +22,24 @@ L.Icon.Default.mergeOptions({
 
 const CALBAYOG_CENTER = [12.0674, 124.5946]
 
+// TEMPORARY: no real GPS integration yet, so every driver falls back to
+// the same center point. This spreads them into a small deterministic
+// circle around the center — based on the driver's own id, so a given
+// driver always lands in the same spot (not random each refresh) —
+// purely so multiple drivers are visually distinguishable on the map.
+// Remove this once real driver_locations tracking is wired up.
+const getFallbackPosition = (driver, index, total) => {
+  if (driver.latitude && driver.longitude) {
+    return [driver.latitude, driver.longitude]
+  }
+  const angle = (index / Math.max(total, 1)) * 2 * Math.PI
+  const radius = 0.008 // roughly ~800m spread around the center
+  return [
+    CALBAYOG_CENTER[0] + radius * Math.sin(angle),
+    CALBAYOG_CENTER[1] + radius * Math.cos(angle),
+  ]
+}
+
 const createCustomIcon = (color) => {
   return L.divIcon({
     className: 'custom-leaflet-icon',
@@ -35,16 +53,16 @@ const createCustomIcon = (color) => {
   })
 }
 
-function MapController({ selectedDriver }) {
+function MapController({ selectedPosition }) {
   const map = useMap()
   useEffect(() => {
-    if (selectedDriver?.latitude && selectedDriver?.longitude) {
-      map.flyTo([selectedDriver.latitude, selectedDriver.longitude], 16, {
+    if (selectedPosition) {
+      map.flyTo(selectedPosition, 16, {
         animate: true,
         duration: 1.5,
       })
     }
-  }, [selectedDriver, map])
+  }, [selectedPosition, map])
   return null
 }
 
@@ -54,6 +72,13 @@ export default function LiveMap() {
 
   const activeDrivers   = drivers.filter(d => d.status === 'active')
   const inactiveDrivers = drivers.filter(d => d.status === 'inactive')
+
+  // Stable position per driver — computed once per render from the
+  // same activeDrivers order, so markers and the fly-to target always agree.
+  const positionsById = {}
+  activeDrivers.forEach((d, i) => {
+    positionsById[d.id] = getFallbackPosition(d, i, activeDrivers.length)
+  })
 
   const initials = (name) =>
     name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'DR'
@@ -113,11 +138,10 @@ export default function LiveMap() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
 
-                  <MapController selectedDriver={selectedDriver} />
+                  <MapController selectedPosition={selectedDriver ? positionsById[selectedDriver.id] : null} />
 
-                  {activeDrivers.map((d) => {
-                    const lat = d.latitude || CALBAYOG_CENTER[0]
-                    const lng = d.longitude || CALBAYOG_CENTER[1]
+                  {activeDrivers.map((d, i) => {
+                    const [lat, lng] = positionsById[d.id]
                     const driverColor = d.color || '#2E7D32'
 
                     return (
@@ -143,6 +167,10 @@ export default function LiveMap() {
                 {/* Map badges overlay */}
                 <div className="absolute bottom-3 left-3 bg-white/90 rounded-lg px-2.5 py-1 text-[10px] sm:text-xs font-bold text-navy shadow z-[400]">
                   📍 Calbayog City
+                </div>
+
+                <div className="absolute bottom-3 right-3 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1 text-[10px] sm:text-xs font-bold text-amber-700 shadow z-[400]">
+                  ⚠️ Placeholder positions — live GPS not yet connected
                 </div>
                 
                 {/* Conditional hint text to let mobile users know how to interact */}
