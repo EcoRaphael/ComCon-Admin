@@ -28,11 +28,10 @@ import {
   ClipboardCheck
 } from 'lucide-react'
 
-const VEHICLE_TYPES = ['Tricycle', 'Pedicab', 'Timbol', 'Multicab']
+const VEHICLE_TYPES = ['Tricycle', 'Timbol', 'Multicab']
 
 const TYPE_ICONS = { 
   Tricycle: <Car className="w-4 h-4" />, 
-  Pedicab: <Car className="w-4 h-4" />, 
   Timbol: <Car className="w-4 h-4" />, 
   Multicab: <Car className="w-4 h-4" /> 
 }

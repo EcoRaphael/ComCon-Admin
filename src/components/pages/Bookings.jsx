@@ -42,7 +42,6 @@ export default function Bookings() {
 
   const vehicleIcons = {
     'Tricycle': <Car size={18} />,
-    'Pedicab':  <Bike size={18} />,
     'Timbol':   <Bus size={18} />,
     'Multicab': <Bus size={18} />,
   }
@@ -77,7 +76,7 @@ export default function Bookings() {
           </div>
         </div>
         <div className="flex gap-4">
-          {['Tricycle', 'Pedicab', 'Timbol', 'Multicab'].map(v => (
+          {['Tricycle', 'Timbol', 'Multicab'].map(v => (
             <div key={v} className="text-center">
               <div className="text-white/70 mb-1 flex justify-center">{vehicleIcons[v]}</div>
               <p className="text-white font-bold text-sm">

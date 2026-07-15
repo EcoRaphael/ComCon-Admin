@@ -20,7 +20,6 @@ import {
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const VEHICLE_COLORS = { 
   Tricycle: 'var(--color-primary)', // Green
-  Pedicab: '#fbbf24',  // Amber
   Timbol: '#3b82f6',   // Blue
   Multicab: '#a855f7'   // Purple
 }
@@ -38,7 +37,7 @@ export default function Analytics() {
       
       const dayBookings = bookings.filter(b => b.created_at?.startsWith(dateStr))
       const dayRevenue = payments
-        .filter(p => p.status === 'completed' && p.created_at?.startsWith(dateStr))
+        .filter(p => p.status === 'paid' && p.created_at?.startsWith(dateStr))
         .reduce((s, p) => s + Number(p.amount || 0), 0)
 
       return {
@@ -52,7 +51,7 @@ export default function Analytics() {
 
   // Vehicle type breakdown
   const vehicleBreakdown = useMemo(() => {
-    const types = ['Tricycle', 'Pedicab', 'Timbol', 'Multicab']
+    const types = ['Tricycle', 'Timbol', 'Multicab']
     const total = bookings.length || 1
     return types.map(t => ({
       label: t,

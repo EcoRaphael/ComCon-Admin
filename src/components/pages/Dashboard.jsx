@@ -31,7 +31,7 @@ export default function Dashboard() {
       const dateStr = d.toISOString().split('T')[0]
       const dayBookings = bookings.filter(b => b.created_at?.startsWith(dateStr))
       const dayRevenue  = payments
-        .filter(p => p.status === 'completed' && p.created_at?.startsWith(dateStr))
+        .filter(p => p.status === 'paid' && p.created_at?.startsWith(dateStr))
         .reduce((s, p) => s + Number(p.amount || 0), 0)
       return {
         day:      DAYS[d.getDay()],
@@ -42,7 +42,7 @@ export default function Dashboard() {
   }, [bookings, payments])
 
   const vehicleBreakdown = useMemo(() => {
-    const types = ['Tricycle', 'Pedicab', 'Timbol', 'Multicab']
+    const types = ['Tricycle', 'Timbol', 'Multicab']
     const total = bookings.filter(b => b.status === 'completed').length || 1
     return types.map(t => ({
       label: t,

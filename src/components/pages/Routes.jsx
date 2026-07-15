@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 
-const VEHICLE_TYPES = ['Tricycle', 'Pedicab', 'Timbol', 'Multicab']
+const VEHICLE_TYPES = ['Tricycle', 'Timbol', 'Multicab']
 
 export default function Routes() {
   const { routes, addRoute, toggleRouteStatus, loading } = useAdmin()
@@ -66,14 +66,14 @@ export default function Routes() {
 
   const activeRoutes   = routes.filter(r => r.status === 'active')
   const tricycleRoutes = routes.filter(r => r.vehicle_types?.includes('Tricycle'))
-  const pedicabRoutes  = routes.filter(r => r.vehicle_types?.includes('Pedicab'))
+  const timbolRoutes   = routes.filter(r => r.vehicle_types?.includes('Timbol'))
 
   return (
     <div className="space-y-5 page-enter">
       <div className="grid grid-cols-3 gap-4">
         <StatCard icon={<Map size={20} />}     iconBg="bg-green-light" value={activeRoutes.length}   label="Active Routes" />
         <StatCard icon={<Car size={20} />}     iconBg="bg-blue-50"     value={tricycleRoutes.length} label="Tricycle Routes" />
-        <StatCard icon={<Bike size={20} />}    iconBg="bg-amber-50"    value={pedicabRoutes.length}  label="Pedicab Routes" />
+        <StatCard icon={<Bike size={20} />}    iconBg="bg-amber-50"    value={timbolRoutes.length}   label="Timbol Routes" />
       </div>
 
       <Card>

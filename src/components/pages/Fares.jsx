@@ -19,11 +19,10 @@ import {
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 
-const VEHICLE_TYPES = ['Tricycle', 'Pedicab', 'Timbol', 'Multicab']
+const VEHICLE_TYPES = ['Tricycle', 'Timbol', 'Multicab']
 
 const VEHICLE_ICONS = {
   Tricycle: <Car size={18} className="text-blue-600" />,
-  Pedicab: <Bike size={18} className="text-emerald-600" />,
   Timbol: <Bus size={18} className="text-amber-600" />,
   Multicab: <Bus size={18} className="text-indigo-600" />
 }
