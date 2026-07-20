@@ -47,7 +47,7 @@ export default function Notifications() {
     // REAL-TIME MONITORING: Listen for new system alerts
     const channel = supabase
       .channel('system_activity')
-      .on('postgres_changes', { event: 'INSERT', table: 'notifications' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
         // Only add if it's a new record
         setNotifications(prev => [payload.new, ...prev].slice(0, 200))
         toast(`🔔 New activity: ${payload.new.title}`)
@@ -94,6 +94,7 @@ export default function Notifications() {
         toast(`✅ Broadcast sent to ${users.length} users`)
         setForm({ title: '', message: '', type: 'system', target: 'all' })
         setShowForm(false)
+        fetchNotifications()
       } else {
         toast('No active users found for this segment')
       }
