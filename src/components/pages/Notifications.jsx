@@ -1,6 +1,7 @@
 // src/components/pages/Notifications.jsx
 // Objective 3: monitor system activity & manage broadcasts
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard } from '@/components/ui'
@@ -31,7 +32,24 @@ const TYPE_STYLES = {
   alert:   'bg-amber-50 text-amber-700 border-amber-100',
 }
 
+// Fallback deep-links by type, used until individual notifications
+// carry their own `link` (e.g. /bookings/:id, /reports/:id).
+const TYPE_FALLBACK_LINK = {
+  booking: '/bookings',
+  report:  '/reports',
+  payment: '/payments',
+}
+
+function resolveLink(n) {
+  // Prefer a precise, record-level link when we have the ID, so the
+  // destination page can auto-open that exact booking/report's detail modal.
+  if (n.booking_id) return `/bookings?id=${n.booking_id}`
+  if (n.report_id)  return `/reports?id=${n.report_id}`
+  return n.link || TYPE_FALLBACK_LINK[n.type] || null
+}
+
 export default function Notifications() {
+  const navigate = useNavigate()
   const { toast } = useToastCtx()
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
@@ -94,7 +112,6 @@ export default function Notifications() {
         toast(`✅ Broadcast sent to ${users.length} users`)
         setForm({ title: '', message: '', type: 'system', target: 'all' })
         setShowForm(false)
-        fetchNotifications()
       } else {
         toast('No active users found for this segment')
       }
@@ -223,10 +240,19 @@ export default function Notifications() {
           ) : filtered.length === 0 ? (
             <div className="p-12 text-center text-sub">No matching activity found.</div>
           ) : (
-            filtered.map(n => (
-              <div key={n.id} className={`flex items-start gap-4 p-5 hover:bg-surface/30 transition-colors group ${!n.is_read ? 'bg-green-light/5' : ''}`}>
-                <div className={`mt-1 w-10 h-10 rounded-xl flex items-center justify-center border ${TYPE_STYLES[n.type]}`}>
-                  {TYPE_ICONS[n.type]}
+            filtered.map(n => {
+              const link = resolveLink(n)
+              return (
+              <div
+                key={n.id}
+                onClick={() => {
+                  if (!n.is_read) handleMarkRead(n.id)
+                  if (link) navigate(link)
+                }}
+                className={`flex items-start gap-4 p-5 hover:bg-surface/30 transition-colors group ${!n.is_read ? 'bg-green-light/5' : ''} ${link ? 'cursor-pointer' : ''}`}
+              >
+                <div className={`mt-1 w-10 h-10 rounded-xl flex items-center justify-center border ${TYPE_STYLES[n.type] || 'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                  {TYPE_ICONS[n.type] || <Bell size={16} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -241,13 +267,16 @@ export default function Notifications() {
                 </div>
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                   {!n.is_read && (
-                    <button onClick={() => handleMarkRead(n.id)} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleMarkRead(n.id) }}
+                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                    >
                       <CheckCheck size={18} />
                     </button>
                   )}
                 </div>
               </div>
-            ))
+            )})
           )}
         </div>
       </div>

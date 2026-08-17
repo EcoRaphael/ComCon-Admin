@@ -138,20 +138,57 @@ export function AdminProvider({ children }) {
 
   // ── BOOKINGS ──────────────────────────────────────────────
   const updateBookingStatus = useCallback(async (id, status) => {
+    const booking = bookings.find(b => b.id === id)
     await supabase.from('bookings').update({ status }).eq('id', id)
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b))
-  }, [])
+
+    // Notify the commuter, with a precise deep-link back to this booking.
+    if (booking?.customer_id) {
+      const { data: notif } = await supabase.from('notifications').insert({
+        user_id: booking.customer_id,
+        booking_id: id,
+        type: 'booking',
+        title: `Booking ${status}`,
+        message: `Your booking from ${booking.pickup} to ${booking.dropoff} is now ${status}.`,
+      }).select().single()
+      if (notif) setNotifications(prev => [notif, ...prev])
+    }
+  }, [bookings])
 
   // ── REPORTS ───────────────────────────────────────────────
   const resolveReport = useCallback(async (id) => {
+    const report = reports.find(r => r.id === id)
     await supabase.from('reports').update({ status: 'resolved' }).eq('id', id)
     setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'resolved' } : r))
-  }, [])
+
+    if (report?.customer_id) {
+      const { data: notif } = await supabase.from('notifications').insert({
+        user_id: report.customer_id,
+        report_id: id,
+        type: 'report',
+        title: 'Report Resolved',
+        message: `Your report about "${report.issue_type}" has been resolved.`,
+      }).select().single()
+      if (notif) setNotifications(prev => [notif, ...prev])
+    }
+  }, [reports])
 
   const updateReportStatus = useCallback(async (id, status) => {
+    const report = reports.find(r => r.id === id)
     await supabase.from('reports').update({ status }).eq('id', id)
     setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-  }, [])
+
+    if (report?.customer_id) {
+      const { data: notif } = await supabase.from('notifications').insert({
+        user_id: report.customer_id,
+        report_id: id,
+        type: 'report',
+        title: `Report ${status}`,
+        message: `Your report about "${report.issue_type}" is now ${status}.`,
+      }).select().single()
+      if (notif) setNotifications(prev => [notif, ...prev])
+    }
+  }, [reports])
 
   // ── CUSTOMERS ─────────────────────────────────────────────
   const toggleCustomerStatus = useCallback(async (id) => {
@@ -226,7 +263,7 @@ export function AdminProvider({ children }) {
     cancelledBookings:   bookings.filter(b => b.status === 'cancelled').length,
     openReports:         reports.filter(r => r.status !== 'resolved').length,
     highSeverityReports: reports.filter(r => r.severity === 'High').length,
-    totalRevenue:        payments.filter(p => p.status === 'completed').reduce((s, p) => s + Number(p.amount || 0), 0),
+    totalRevenue:        payments.filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.amount || 0), 0),
     avgRating:           drivers.length ? (drivers.reduce((s, d) => s + Number(d.rating || 0), 0) / drivers.length).toFixed(1) : '0.0',
     totalRoutes:         routes.filter(r => r.status === 'active').length,
     totalVehicles:       vehicles.length,

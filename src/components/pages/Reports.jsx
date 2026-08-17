@@ -1,6 +1,7 @@
 // src/components/pages/Reports.jsx
 // Objective 4: organize reports, ratings, and complaints
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal } from '@/components/ui'
@@ -17,6 +18,21 @@ export default function Reports() {
   const [filter,   setFilter]   = useState('all')
   const [search,   setSearch]   = useState('')
   const [selected, setSelected] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Deep-link support: /reports?id=<report_id> opens that report's modal directly
+  // (used when navigating in from a notification).
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (!id || !reports.length) return
+    const match = reports.find(r => r.id === id)
+    if (match) {
+      setSelected(match)
+      const next = new URLSearchParams(searchParams)
+      next.delete('id')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, reports, setSearchParams])
 
   const filtered = reports.filter(r => {
     const matchFilter = filter === 'all' ? true :

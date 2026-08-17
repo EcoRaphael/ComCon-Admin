@@ -1,6 +1,7 @@
 // src/components/pages/Bookings.jsx
 // Objective 1: manage bookings, ride details, fare inquiries
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal } from '@/components/ui'
@@ -17,6 +18,21 @@ export default function Bookings() {
   const [filter,   setFilter]   = useState('all')
   const [search,   setSearch]   = useState('')
   const [selected, setSelected] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Deep-link support: /bookings?id=<booking_id> opens that booking's modal directly
+  // (used when navigating in from a notification).
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (!id || !bookings.length) return
+    const match = bookings.find(b => b.id === id)
+    if (match) {
+      setSelected(match)
+      const next = new URLSearchParams(searchParams)
+      next.delete('id')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, bookings, setSearchParams])
 
   const filtered = bookings.filter(b => {
     const matchFilter = filter === 'all' ? true : b.status === filter
@@ -42,6 +58,7 @@ export default function Bookings() {
 
   const vehicleIcons = {
     'Tricycle': <Car size={18} />,
+    'Pedicab':  <Bike size={18} />,
     'Timbol':   <Bus size={18} />,
     'Multicab': <Bus size={18} />,
   }
@@ -76,7 +93,7 @@ export default function Bookings() {
           </div>
         </div>
         <div className="flex gap-4">
-          {['Tricycle', 'Timbol', 'Multicab'].map(v => (
+          {['Tricycle', 'Pedicab', 'Timbol', 'Multicab'].map(v => (
             <div key={v} className="text-center">
               <div className="text-white/70 mb-1 flex justify-center">{vehicleIcons[v]}</div>
               <p className="text-white font-bold text-sm">
