@@ -144,14 +144,17 @@ export function AdminProvider({ children }) {
 
     // Notify the commuter, with a precise deep-link back to this booking.
     if (booking?.customer_id) {
-      const { data: notif } = await supabase.from('notifications').insert({
+      const { data: notif, error: notifError } = await supabase.from('notifications').insert({
         user_id: booking.customer_id,
         booking_id: id,
         type: 'booking',
         title: `Booking ${status}`,
         message: `Your booking from ${booking.pickup} to ${booking.dropoff} is now ${status}.`,
       }).select().single()
+      if (notifError) console.error('[updateBookingStatus] notification insert failed:', notifError)
       if (notif) setNotifications(prev => [notif, ...prev])
+    } else if (booking) {
+      console.warn('[updateBookingStatus] booking has no customer_id — no notification created:', booking.id)
     }
   }, [bookings])
 
@@ -162,14 +165,17 @@ export function AdminProvider({ children }) {
     setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'resolved' } : r))
 
     if (report?.customer_id) {
-      const { data: notif } = await supabase.from('notifications').insert({
+      const { data: notif, error: notifError } = await supabase.from('notifications').insert({
         user_id: report.customer_id,
         report_id: id,
         type: 'report',
         title: 'Report Resolved',
         message: `Your report about "${report.issue_type}" has been resolved.`,
       }).select().single()
+      if (notifError) console.error('[resolveReport] notification insert failed:', notifError)
       if (notif) setNotifications(prev => [notif, ...prev])
+    } else if (report) {
+      console.warn('[resolveReport] report has no customer_id — no notification created:', report.id)
     }
   }, [reports])
 
@@ -179,14 +185,17 @@ export function AdminProvider({ children }) {
     setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r))
 
     if (report?.customer_id) {
-      const { data: notif } = await supabase.from('notifications').insert({
+      const { data: notif, error: notifError } = await supabase.from('notifications').insert({
         user_id: report.customer_id,
         report_id: id,
         type: 'report',
         title: `Report ${status}`,
         message: `Your report about "${report.issue_type}" is now ${status}.`,
       }).select().single()
+      if (notifError) console.error('[updateReportStatus] notification insert failed:', notifError)
       if (notif) setNotifications(prev => [notif, ...prev])
+    } else if (report) {
+      console.warn('[updateReportStatus] report has no customer_id — no notification created:', report.id)
     }
   }, [reports])
 
