@@ -1,6 +1,6 @@
 // src/components/pages/Notifications.jsx
 // Objective 3: monitor system activity & manage broadcasts
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { useToastCtx } from '@/lib/ToastContext'
@@ -59,6 +59,15 @@ export default function Notifications() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ title: '', message: '', type: 'system', target: 'all' })
 
+  // Tracks the title+message of a broadcast this admin just sent, so the
+  // realtime listener below can recognize "this is my own broadcast landing"
+  // and skip toasting once per recipient instead of flooding the screen.
+  const activeBroadcastRef = useRef(null)
+  // Buffers realtime inserts that belong to a broadcast so they land in
+  // state as one batched update instead of one re-render per recipient.
+  const broadcastBufferRef = useRef([])
+  const broadcastFlushTimerRef = useRef(null)
+
   useEffect(() => {
     fetchNotifications()
 
@@ -66,13 +75,36 @@ export default function Notifications() {
     const channel = supabase
       .channel('system_activity')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-        // Only add if it's a new record
+        const active = activeBroadcastRef.current
+        const isOwnBroadcast = active &&
+          payload.new.title === active.title &&
+          payload.new.message === active.message &&
+          Date.now() < active.until
+
+        if (isOwnBroadcast) {
+          // Batch these — don't toast per-recipient, don't re-render per-recipient.
+          broadcastBufferRef.current.push(payload.new)
+          if (!broadcastFlushTimerRef.current) {
+            broadcastFlushTimerRef.current = setTimeout(() => {
+              const batch = broadcastBufferRef.current
+              broadcastBufferRef.current = []
+              broadcastFlushTimerRef.current = null
+              setNotifications(prev => [...batch, ...prev].slice(0, 200))
+            }, 500)
+          }
+          return
+        }
+
+        // Normal case: one external event, one toast.
         setNotifications(prev => [payload.new, ...prev].slice(0, 200))
         toast(`🔔 New activity: ${payload.new.title}`)
       })
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+    return () => {
+      supabase.removeChannel(channel)
+      if (broadcastFlushTimerRef.current) clearTimeout(broadcastFlushTimerRef.current)
+    }
   }, [])
 
   async function fetchNotifications() {
@@ -100,6 +132,15 @@ export default function Notifications() {
       const { data: users } = await query
 
       if (users?.length > 0) {
+        // Flag this exact title+message as "my own broadcast" for the next
+        // few seconds, so incoming realtime inserts for it get batched
+        // instead of toasting once per recipient.
+        activeBroadcastRef.current = {
+          title: form.title,
+          message: form.message,
+          until: Date.now() + 15000,
+        }
+
         const rows = users.map(u => ({
           user_id: u.id,
           title: form.title,
