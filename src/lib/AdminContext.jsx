@@ -1,10 +1,12 @@
 // src/lib/AdminContext.jsx
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/AuthContext'
 
 const AdminContext = createContext(null)
 
 export function AdminProvider({ children }) {
+  const { loadingAuth, isLoggedIn } = useAuth()
   const [drivers,       setDrivers]       = useState([])
   const [bookings,      setBookings]      = useState([])
   const [reports,       setReports]       = useState([])
@@ -67,7 +69,17 @@ export function AdminProvider({ children }) {
     }
   }, [])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  // Wait for auth to actually resolve before fetching anything. Without
+  // this, fetchAll() can fire before Supabase's session is attached to
+  // the client — every request goes out as anonymous, RLS returns zero
+  // rows for every table, and the dashboard shows all zeros until a
+  // refresh happens to win the race. If there's no session at all, skip
+  // fetching (ProtectedRoute will redirect to /login).
+  useEffect(() => {
+    if (loadingAuth) return
+    if (!isLoggedIn) { setLoading(false); return }
+    fetchAll()
+  }, [loadingAuth, isLoggedIn, fetchAll])
 
   // ── DRIVERS ───────────────────────────────────────────────
   const toggleDriverStatus = useCallback(async (id) => {
