@@ -4,15 +4,6 @@ import { supabase } from '@/lib/supabase/client'
 
 const AdminContext = createContext(null)
 
-// Per-status notification copy so the activity feed reads like real
-// ride progress ("Driver On The Way") rather than a raw status string.
-const BOOKING_STATUS_NOTIF = {
-  pending:   { title: 'Booking Pending',    message: (b) => `Your booking from ${b.pickup} to ${b.dropoff} is pending confirmation.` },
-  ongoing:   { title: 'Driver On The Way',  message: (b) => `Your ride from ${b.pickup} to ${b.dropoff} has started.` },
-  completed: { title: 'Ride Completed',     message: (b) => `Your ride from ${b.pickup} to ${b.dropoff} is complete. Please rate your driver.` },
-  cancelled: { title: 'Booking Cancelled',  message: (b) => `Your booking from ${b.pickup} to ${b.dropoff} was cancelled.` },
-}
-
 export function AdminProvider({ children }) {
   const [drivers,       setDrivers]       = useState([])
   const [bookings,      setBookings]      = useState([])
@@ -146,30 +137,13 @@ export function AdminProvider({ children }) {
   }, [drivers])
 
   // ── BOOKINGS ──────────────────────────────────────────────
-  const updateBookingStatus = useCallback(async (id, status) => {
-    const booking = bookings.find(b => b.id === id)
-    await supabase.from('bookings').update({ status }).eq('id', id)
-    setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b))
-
-    // Notify the commuter, with a precise deep-link back to this booking.
-    if (booking?.customer_id) {
-      const copy = BOOKING_STATUS_NOTIF[status] || {
-        title: `Booking ${status}`,
-        message: (b) => `Your booking from ${b.pickup} to ${b.dropoff} is now ${status}.`,
-      }
-      const { data: notif, error: notifError } = await supabase.from('notifications').insert({
-        user_id: booking.customer_id,
-        booking_id: id,
-        type: 'booking',
-        title: copy.title,
-        message: copy.message(booking),
-      }).select().single()
-      if (notifError) console.error('[updateBookingStatus] notification insert failed:', notifError)
-      if (notif) setNotifications(prev => [notif, ...prev])
-    } else if (booking) {
-      console.warn('[updateBookingStatus] booking has no customer_id — no notification created:', booking.id)
-    }
-  }, [bookings])
+  // ── BOOKINGS ──────────────────────────────────────────────
+  // Booking status is intentionally NOT editable from the Admin Panel.
+  // The ride lifecycle (accept/decline/start/complete) belongs to the
+  // Driver App, and notifications for it are created automatically by a
+  // DB trigger (see supabase/migrations/booking_notifications_trigger.sql)
+  // regardless of which app changes the row. No update function is
+  // exposed here on purpose — see Bookings.jsx, which is read-only.
 
   // ── REPORTS ───────────────────────────────────────────────
   const resolveReport = useCallback(async (id) => {
@@ -302,7 +276,6 @@ export function AdminProvider({ children }) {
       loading, sidebarOpen, setSidebarOpen,
       fetchAll,
       toggleDriverStatus, verifyDriver, addDriver, deleteDriver,
-      updateBookingStatus,
       resolveReport, updateReportStatus,
       toggleCustomerStatus,
       addRoute, toggleRouteStatus,

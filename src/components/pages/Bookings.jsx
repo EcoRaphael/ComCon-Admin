@@ -1,5 +1,11 @@
 // src/components/pages/Bookings.jsx
 // Objective 1: manage bookings, ride details, fare inquiries
+//
+// NOTE: Booking status is intentionally READ-ONLY here. The ride lifecycle
+// (accept/decline/start/complete) is driven by the Driver App, and the
+// commuter/driver notifications for it come from a DB trigger (see
+// supabase/migrations/booking_notifications_trigger.sql) — not from admin
+// action. The admin panel is for monitoring, not dispatching.
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAdmin } from '@/lib/AdminContext'
@@ -7,16 +13,15 @@ import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal } from '@/components/ui'
 import {
   CheckCircle2, Clock, XCircle, Activity, Search,
-  Eye, Ban, Wallet, Car, Bike, Bus,
-  MapPin, User, Calendar, ArrowRight, PlayCircle
+  Eye, Wallet, Car, Bike, Bus,
+  MapPin, User, Calendar, ArrowRight
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 
 export default function Bookings() {
-  const { bookings, updateBookingStatus, stats, loading } = useAdmin()
-  const { toast } = useToastCtx()
-  const [filter,   setFilter]   = useState('all')
-  const [search,   setSearch]   = useState('')
+  const { bookings, stats, loading } = useAdmin()
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -51,35 +56,21 @@ export default function Bookings() {
 
   const counts = {
     completed: stats.completedBookings,
-    ongoing:   stats.ongoingBookings,
-    pending:   stats.pendingBookings,
+    ongoing: stats.ongoingBookings,
+    pending: stats.pendingBookings,
     cancelled: stats.cancelledBookings,
   }
 
   const vehicleIcons = {
     'Tricycle': <Car size={18} />,
-    'Pedicab':  <Bike size={18} />,
-    'Timbol':   <Bus size={18} />,
+    'Pedicab': <Bike size={18} />,
+    'Timbol': <Bus size={18} />,
     'Multicab': <Bus size={18} />,
   }
 
-  const handleCancel = (id) => {
-    updateBookingStatus(id, 'cancelled')
-    toast('Booking cancelled')
-    setSelected(null)
-  }
-
-  // Any status change (pending → ongoing → completed, or → cancelled) goes
-  // through here so the modal / table stay in sync and the commuter gets
-  // notified with the right status via updateBookingStatus.
-  const handleStatusChange = (id, status) => {
-    updateBookingStatus(id, status)
-    toast(`Booking marked as ${status}`)
-  }
-
   // Look the selected booking up live from `bookings` (rather than freezing
-  // the object at the moment "View" was clicked) so the modal reflects
-  // status changes made while it's open.
+  // the object at the moment "View" was clicked) so the modal reflects any
+  // update in real time.
   const b = selected ? bookings.find(bk => bk.id === selected.id) || selected : null
 
   return (
@@ -87,9 +78,9 @@ export default function Bookings() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<CheckCircle2 size={20} />} iconBg="bg-green-light" value={counts.completed} label="Completed" trendUp />
-        <StatCard icon={<Activity size={20} />}     iconBg="bg-blue-50"     value={counts.ongoing}   label="Ongoing" />
-        <StatCard icon={<Clock size={20} />}        iconBg="bg-amber-50"    value={counts.pending}   label="Pending" />
-        <StatCard icon={<XCircle size={20} />}      iconBg="bg-red-50"      value={counts.cancelled} label="Cancelled" />
+        <StatCard icon={<Activity size={20} />} iconBg="bg-blue-50" value={counts.ongoing} label="Ongoing" />
+        <StatCard icon={<Clock size={20} />} iconBg="bg-amber-50" value={counts.pending} label="Pending" />
+        <StatCard icon={<XCircle size={20} />} iconBg="bg-red-50" value={counts.cancelled} label="Cancelled" />
       </div>
 
       {/* Revenue banner */}
@@ -117,7 +108,7 @@ export default function Bookings() {
       </div>
 
       <Card>
-        <CardHead title="All Bookings"/>
+        <CardHead title="All Bookings" />
 
         <div className="px-5 py-3 border-b border-border flex flex-wrap gap-2 items-center">
           <div className="relative max-w-xs w-full">
@@ -132,9 +123,8 @@ export default function Bookings() {
           <div className="flex gap-1.5 flex-wrap">
             {['all', 'completed', 'ongoing', 'pending', 'cancelled'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${
-                  filter === f ? 'bg-green text-white' : 'bg-surface text-sub hover:text-navy'
-                }`}>
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${filter === f ? 'bg-green text-white' : 'bg-surface text-sub hover:text-navy'
+                  }`}>
                 {f}{f !== 'all' ? ` (${counts[f] ?? 0})` : ''}
               </button>
             ))}
@@ -169,11 +159,10 @@ export default function Bookings() {
                     <td className="text-sm">{b.vehicle_type}</td>
                     <td className="font-bold text-green">₱{Number(b.fare || 0).toFixed(2)}</td>
                     <td>
-                      <span className={`badge ${
-                        b.payment_status === 'paid'      ? 'badge-green' :
-                        b.payment_status === 'refunded'  ? 'badge-blue'  :
-                        b.payment_status === 'cancelled' ? 'badge-gray'  : 'badge-amber'
-                      }`}>
+                      <span className={`badge ${b.payment_status === 'paid' ? 'badge-green' :
+                          b.payment_status === 'refunded' ? 'badge-blue' :
+                            b.payment_status === 'cancelled' ? 'badge-gray' : 'badge-amber'
+                        }`}>
                         <span className="badge-dot" />{b.payment_status}
                       </span>
                     </td>
@@ -181,18 +170,7 @@ export default function Bookings() {
                       {new Date(b.created_at).toLocaleDateString('en-PH')}
                       <span className="block">{new Date(b.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</span>
                     </td>
-                    <td>
-                      <select
-                        value={b.status}
-                        onChange={e => handleStatusChange(b.id, e.target.value)}
-                        className="text-xs font-medium px-2 py-1 rounded-lg border border-border bg-white cursor-pointer focus:ring-2 focus:ring-green/20 outline-none"
-                      >
-                        <option value="pending">⏳ Pending</option>
-                        <option value="ongoing">🚗 Ongoing</option>
-                        <option value="completed">✅ Completed</option>
-                        <option value="cancelled">❌ Cancelled</option>
-                      </select>
-                    </td>
+                    <td><StatusBadge status={b.status} /></td>
                     <td>
                       <div className="flex gap-1.5">
                         <button className="btn-ghost btn-sm flex items-center gap-1"
@@ -216,7 +194,7 @@ export default function Bookings() {
 
             {/* Booking ID + Status */}
             <div className="flex items-center justify-between">
-              <span className="text-xs text-sub font-mono">#{String(b.id).slice(0,8).toUpperCase()}</span>
+              <span className="text-xs text-sub font-mono">#{String(b.id).slice(0, 8).toUpperCase()}</span>
               <StatusBadge status={b.status} />
             </div>
 
@@ -264,11 +242,10 @@ export default function Bookings() {
               </div>
               <div className="bg-surface rounded-xl p-3 text-center">
                 <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5">Payment</p>
-                <span className={`badge text-[10px] ${
-                  b.payment_status === 'paid'      ? 'badge-green' :
-                  b.payment_status === 'refunded'  ? 'badge-blue'  :
-                  b.payment_status === 'cancelled' ? 'badge-gray'  : 'badge-amber'
-                }`}>
+                <span className={`badge text-[10px] ${b.payment_status === 'paid' ? 'badge-green' :
+                    b.payment_status === 'refunded' ? 'badge-blue' :
+                      b.payment_status === 'cancelled' ? 'badge-gray' : 'badge-amber'
+                  }`}>
                   <span className="badge-dot" />{b.payment_status || 'unpaid'}
                 </span>
               </div>
@@ -287,39 +264,6 @@ export default function Bookings() {
               <span>{new Date(b.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
 
-            {/* Status actions — progress the ride or cancel it */}
-            {b.status === 'pending' && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <button
-                  className="btn-primary flex items-center justify-center gap-2 py-2.5"
-                  onClick={() => handleStatusChange(b.id, 'ongoing')}
-                >
-                  <PlayCircle size={15} /> Start Ride
-                </button>
-                <button
-                  className="btn-danger flex items-center justify-center gap-2 py-2.5"
-                  onClick={() => handleCancel(b.id)}
-                >
-                  <Ban size={15} /> Cancel
-                </button>
-              </div>
-            )}
-            {b.status === 'ongoing' && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <button
-                  className="btn-primary flex items-center justify-center gap-2 py-2.5"
-                  onClick={() => handleStatusChange(b.id, 'completed')}
-                >
-                  <CheckCircle2 size={15} /> Mark Completed
-                </button>
-                <button
-                  className="btn-danger flex items-center justify-center gap-2 py-2.5"
-                  onClick={() => handleCancel(b.id)}
-                >
-                  <Ban size={15} /> Cancel
-                </button>
-              </div>
-            )}
           </div>
         )}
       </Modal>
