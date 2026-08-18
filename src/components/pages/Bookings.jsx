@@ -8,7 +8,7 @@ import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal } from '@/compo
 import {
   CheckCircle2, Clock, XCircle, Activity, Search,
   Eye, Ban, Wallet, Car, Bike, Bus,
-  MapPin, User, Calendar, ArrowRight
+  MapPin, User, Calendar, ArrowRight, PlayCircle
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 
@@ -69,7 +69,18 @@ export default function Bookings() {
     setSelected(null)
   }
 
-  const b = selected
+  // Any status change (pending → ongoing → completed, or → cancelled) goes
+  // through here so the modal / table stay in sync and the commuter gets
+  // notified with the right status via updateBookingStatus.
+  const handleStatusChange = (id, status) => {
+    updateBookingStatus(id, status)
+    toast(`Booking marked as ${status}`)
+  }
+
+  // Look the selected booking up live from `bookings` (rather than freezing
+  // the object at the moment "View" was clicked) so the modal reflects
+  // status changes made while it's open.
+  const b = selected ? bookings.find(bk => bk.id === selected.id) || selected : null
 
   return (
     <div className="space-y-5 page-enter">
@@ -170,19 +181,24 @@ export default function Bookings() {
                       {new Date(b.created_at).toLocaleDateString('en-PH')}
                       <span className="block">{new Date(b.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</span>
                     </td>
-                    <td><StatusBadge status={b.status} /></td>
+                    <td>
+                      <select
+                        value={b.status}
+                        onChange={e => handleStatusChange(b.id, e.target.value)}
+                        className="text-xs font-medium px-2 py-1 rounded-lg border border-border bg-white cursor-pointer focus:ring-2 focus:ring-green/20 outline-none"
+                      >
+                        <option value="pending">⏳ Pending</option>
+                        <option value="ongoing">🚗 Ongoing</option>
+                        <option value="completed">✅ Completed</option>
+                        <option value="cancelled">❌ Cancelled</option>
+                      </select>
+                    </td>
                     <td>
                       <div className="flex gap-1.5">
                         <button className="btn-ghost btn-sm flex items-center gap-1"
                           onClick={() => setSelected(b)}>
                           <Eye size={14} /> View
                         </button>
-                        {b.status === 'pending' && (
-                          <button className="btn-ghost btn-sm flex items-center gap-1 hover:border-brand-red hover:text-brand-red"
-                            onClick={() => handleCancel(b.id)}>
-                            <Ban size={14} /> Cancel
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -271,14 +287,38 @@ export default function Bookings() {
               <span>{new Date(b.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
 
-            {/* Cancel action */}
+            {/* Status actions — progress the ride or cancel it */}
             {b.status === 'pending' && (
-              <button
-                className="btn-danger w-full flex items-center justify-center gap-2 py-2.5 mt-2"
-                onClick={() => handleCancel(b.id)}
-              >
-                <Ban size={15} /> Cancel This Booking
-              </button>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button
+                  className="btn-primary flex items-center justify-center gap-2 py-2.5"
+                  onClick={() => handleStatusChange(b.id, 'ongoing')}
+                >
+                  <PlayCircle size={15} /> Start Ride
+                </button>
+                <button
+                  className="btn-danger flex items-center justify-center gap-2 py-2.5"
+                  onClick={() => handleCancel(b.id)}
+                >
+                  <Ban size={15} /> Cancel
+                </button>
+              </div>
+            )}
+            {b.status === 'ongoing' && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button
+                  className="btn-primary flex items-center justify-center gap-2 py-2.5"
+                  onClick={() => handleStatusChange(b.id, 'completed')}
+                >
+                  <CheckCircle2 size={15} /> Mark Completed
+                </button>
+                <button
+                  className="btn-danger flex items-center justify-center gap-2 py-2.5"
+                  onClick={() => handleCancel(b.id)}
+                >
+                  <Ban size={15} /> Cancel
+                </button>
+              </div>
             )}
           </div>
         )}
