@@ -13,15 +13,15 @@ import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal } from '@/components/ui'
 import {
   CheckCircle2, Clock, XCircle, Activity, Search,
-  Eye, Wallet, Car, Bike, Bus,
+  Eye, Wallet, Car, Bus,
   MapPin, User, Calendar, ArrowRight
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 
 export default function Bookings() {
   const { bookings, stats, loading } = useAdmin()
-  const [filter, setFilter] = useState('all')
-  const [search, setSearch] = useState('')
+  const [filter,   setFilter]   = useState('all')
+  const [search,   setSearch]   = useState('')
   const [selected, setSelected] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -56,15 +56,14 @@ export default function Bookings() {
 
   const counts = {
     completed: stats.completedBookings,
-    ongoing: stats.ongoingBookings,
-    pending: stats.pendingBookings,
+    ongoing:   stats.ongoingBookings,
+    pending:   stats.pendingBookings,
     cancelled: stats.cancelledBookings,
   }
 
   const vehicleIcons = {
     'Tricycle': <Car size={18} />,
-    'Pedicab': <Bike size={18} />,
-    'Timbol': <Bus size={18} />,
+    'Timbol':   <Bus size={18} />,
     'Multicab': <Bus size={18} />,
   }
 
@@ -78,9 +77,9 @@ export default function Bookings() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<CheckCircle2 size={20} />} iconBg="bg-green-light" value={counts.completed} label="Completed" trendUp />
-        <StatCard icon={<Activity size={20} />} iconBg="bg-blue-50" value={counts.ongoing} label="Ongoing" />
-        <StatCard icon={<Clock size={20} />} iconBg="bg-amber-50" value={counts.pending} label="Pending" />
-        <StatCard icon={<XCircle size={20} />} iconBg="bg-red-50" value={counts.cancelled} label="Cancelled" />
+        <StatCard icon={<Activity size={20} />}     iconBg="bg-blue-50"     value={counts.ongoing}   label="Ongoing" />
+        <StatCard icon={<Clock size={20} />}        iconBg="bg-amber-50"    value={counts.pending}   label="Pending" />
+        <StatCard icon={<XCircle size={20} />}      iconBg="bg-red-50"      value={counts.cancelled} label="Cancelled" />
       </div>
 
       {/* Revenue banner */}
@@ -95,7 +94,7 @@ export default function Bookings() {
           </div>
         </div>
         <div className="flex gap-4">
-          {['Tricycle', 'Pedicab', 'Timbol', 'Multicab'].map(v => (
+          {['Tricycle', 'Timbol', 'Multicab'].map(v => (
             <div key={v} className="text-center">
               <div className="text-white/70 mb-1 flex justify-center">{vehicleIcons[v]}</div>
               <p className="text-white font-bold text-sm">
@@ -108,7 +107,7 @@ export default function Bookings() {
       </div>
 
       <Card>
-        <CardHead title="All Bookings" />
+        <CardHead title="All Bookings"/>
 
         <div className="px-5 py-3 border-b border-border flex flex-wrap gap-2 items-center">
           <div className="relative max-w-xs w-full">
@@ -123,8 +122,9 @@ export default function Bookings() {
           <div className="flex gap-1.5 flex-wrap">
             {['all', 'completed', 'ongoing', 'pending', 'cancelled'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${filter === f ? 'bg-green text-white' : 'bg-surface text-sub hover:text-navy'
-                  }`}>
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${
+                  filter === f ? 'bg-green text-white' : 'bg-surface text-sub hover:text-navy'
+                }`}>
                 {f}{f !== 'all' ? ` (${counts[f] ?? 0})` : ''}
               </button>
             ))}
@@ -159,10 +159,11 @@ export default function Bookings() {
                     <td className="text-sm">{b.vehicle_type}</td>
                     <td className="font-bold text-green">₱{Number(b.fare || 0).toFixed(2)}</td>
                     <td>
-                      <span className={`badge ${b.payment_status === 'paid' ? 'badge-green' :
-                          b.payment_status === 'refunded' ? 'badge-blue' :
-                            b.payment_status === 'cancelled' ? 'badge-gray' : 'badge-amber'
-                        }`}>
+                      <span className={`badge ${
+                        b.payment_status === 'paid'      ? 'badge-green' :
+                        b.payment_status === 'refunded'  ? 'badge-blue'  :
+                        b.payment_status === 'cancelled' ? 'badge-gray'  : 'badge-amber'
+                      }`}>
                         <span className="badge-dot" />{b.payment_status}
                       </span>
                     </td>
@@ -194,7 +195,7 @@ export default function Bookings() {
 
             {/* Booking ID + Status */}
             <div className="flex items-center justify-between">
-              <span className="text-xs text-sub font-mono">#{String(b.id).slice(0, 8).toUpperCase()}</span>
+              <span className="text-xs text-sub font-mono">#{String(b.id).slice(0,8).toUpperCase()}</span>
               <StatusBadge status={b.status} />
             </div>
 
@@ -242,10 +243,11 @@ export default function Bookings() {
               </div>
               <div className="bg-surface rounded-xl p-3 text-center">
                 <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5">Payment</p>
-                <span className={`badge text-[10px] ${b.payment_status === 'paid' ? 'badge-green' :
-                    b.payment_status === 'refunded' ? 'badge-blue' :
-                      b.payment_status === 'cancelled' ? 'badge-gray' : 'badge-amber'
-                  }`}>
+                <span className={`badge text-[10px] ${
+                  b.payment_status === 'paid'      ? 'badge-green' :
+                  b.payment_status === 'refunded'  ? 'badge-blue'  :
+                  b.payment_status === 'cancelled' ? 'badge-gray'  : 'badge-amber'
+                }`}>
                   <span className="badge-dot" />{b.payment_status || 'unpaid'}
                 </span>
               </div>

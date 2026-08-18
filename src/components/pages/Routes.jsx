@@ -11,7 +11,7 @@ import {
   MapPin, 
   Plus, 
   X, 
-  Bike, 
+  Bus, 
   Car, 
   Activity, 
   Power, 
@@ -73,7 +73,7 @@ export default function Routes() {
       <div className="grid grid-cols-3 gap-4">
         <StatCard icon={<Map size={20} />}     iconBg="bg-green-light" value={activeRoutes.length}   label="Active Routes" />
         <StatCard icon={<Car size={20} />}     iconBg="bg-blue-50"     value={tricycleRoutes.length} label="Tricycle Routes" />
-        <StatCard icon={<Bike size={20} />}    iconBg="bg-amber-50"    value={timbolRoutes.length}   label="Timbol Routes" />
+        <StatCard icon={<Bus size={20} />}     iconBg="bg-amber-50"    value={timbolRoutes.length}    label="Timbol Routes" />
       </div>
 
       <Card>

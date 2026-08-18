@@ -42,7 +42,7 @@ export default function Dashboard() {
   }, [bookings, payments])
 
   const vehicleBreakdown = useMemo(() => {
-    const types = ['Tricycle', 'Pedicab', 'Timbol', 'Multicab']
+    const types = ['Tricycle', 'Timbol', 'Multicab']
     const total = bookings.filter(b => b.status === 'completed').length || 1
     return types.map(t => ({
       label: t,
