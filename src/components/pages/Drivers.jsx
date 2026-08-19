@@ -43,7 +43,7 @@ const EMPTY_FORM = {
 }
 
 export default function Drivers() {
-  const { drivers, toggleDriverStatus, verifyDriver, addDriver, deleteDriver, stats, loading } = useAdmin()
+  const { drivers, toggleDriverStatus, verifyDriver, updateDriverDetails, addDriver, deleteDriver, stats, loading } = useAdmin()
   const { toast } = useToastCtx()
 
   const [search, setSearch] = useState('')
@@ -55,8 +55,12 @@ export default function Drivers() {
   const [verifying, setVerifying] = useState(false)
   const [driverVehicle,  setDriverVehicle]  = useState(null)
   const [loadingVehicle, setLoadingVehicle] = useState(false)
+  const [documentUrls,   setDocumentUrls]   = useState({ license: null, or: null, cr: null })
+  const [loadingDocs,    setLoadingDocs]    = useState(false)
   const [confirmDelete,  setConfirmDelete]  = useState(null)
   const [deleting,       setDeleting]       = useState(false)
+  const [plateEdit,      setPlateEdit]      = useState({ plate: '', licenseNo: '' })
+  const [savingPlate,    setSavingPlate]    = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
 
   // Open modal if navigated here from Topbar CTA
@@ -76,10 +80,60 @@ export default function Drivers() {
     if (viewDriver) {
       setActiveTab('driver')
       fetchDriverVehicle(viewDriver.id)
+      fetchDriverDocuments(viewDriver)
+      setPlateEdit({
+        plate: viewDriver.plate?.startsWith('PENDING-') ? '' : viewDriver.plate || '',
+        licenseNo: viewDriver.license_no || '',
+      })
     } else {
       setDriverVehicle(null)
+      setDocumentUrls({ license: null, or: null, cr: null })
     }
   }, [viewDriver])
+
+  // Documents live in a private storage bucket, so we generate short-lived
+  // signed URLs on demand rather than storing a permanent public link.
+  async function fetchDriverDocuments(driver) {
+    setLoadingDocs(true)
+    const paths = {
+      license: driver.license_photo_path,
+      or:      driver.or_photo_path,
+      cr:      driver.cr_photo_path,
+    }
+    const entries = await Promise.all(
+      Object.entries(paths).map(async ([key, path]) => {
+        if (!path) return [key, null]
+        const { data } = await supabase.storage
+          .from('driver-documents')
+          .createSignedUrl(path, 300) // 5 minutes — regenerated each time the modal opens
+        return [key, data?.signedUrl || null]
+      })
+    )
+    setDocumentUrls(Object.fromEntries(entries))
+    setLoadingDocs(false)
+  }
+
+  async function handleSavePlate() {
+    if (!viewDriver) return
+    if (!plateEdit.plate.trim()) {
+      toast('Enter the plate number shown on their OR/CR photo.', 'error')
+      return
+    }
+    setSavingPlate(true)
+    const { error } = await updateDriverDetails(viewDriver.id, {
+      plate: plateEdit.plate,
+      licenseNo: plateEdit.licenseNo,
+    })
+    setSavingPlate(false)
+    if (error) {
+      toast(error.message?.includes('duplicate') || error.code === '23505'
+        ? 'That plate number is already registered to another driver.'
+        : 'Failed to save: ' + error.message, 'error')
+    } else {
+      toast('✅ Plate & license saved.')
+      setViewDriver(prev => prev ? { ...prev, plate: plateEdit.plate.trim().toUpperCase(), license_no: plateEdit.licenseNo.trim() } : prev)
+    }
+  }
 
   async function fetchDriverVehicle(driverId) {
     setLoadingVehicle(true)
@@ -257,7 +311,11 @@ export default function Drivers() {
                         {TYPE_ICONS[d.vehicle_type]} {d.vehicle_type}
                       </span>
                     </td>
-                    <td className="font-mono text-sm">{d.plate}</td>
+                    <td className="font-mono text-sm">
+                      {d.plate?.startsWith('PENDING-')
+                        ? <span className="text-amber-600 font-semibold text-xs">⚠ Plate Pending</span>
+                        : d.plate}
+                    </td>
                     <td className="text-xs text-sub max-w-[150px] truncate">{d.route}</td>
                     <td>
                       {d.verified
@@ -276,7 +334,15 @@ export default function Drivers() {
                         <button className="btn-ghost btn-sm" onClick={() => setViewDriver(d)}>View</button>
                         {!d.verified && (
                           <button className="btn-ghost btn-sm hover:border-green hover:text-green"
-                            onClick={() => { verifyDriver(d.id); toast(`✅ ${d.name} verified!`) }}>
+                            onClick={async () => {
+                              if (d.plate?.startsWith('PENDING-')) {
+                                toast('Set this driver\'s real plate number first (open View → Info tab).', 'error')
+                                setViewDriver(d)
+                                return
+                              }
+                              const { error } = await verifyDriver(d.id)
+                              toast(error ? error.message : `✅ ${d.name} verified!`, error ? 'error' : undefined)
+                            }}>
                             Verify
                           </button>
                         )}
@@ -411,7 +477,10 @@ export default function Drivers() {
             <Avatar initials={initials(viewDriver.name)} color={viewDriver.color || 'var(--color-primary)'} size="lg" className="mx-auto mb-3" />
             <p className="font-bold text-lg">{viewDriver.name}</p>
             <p className="text-sm text-sub flex items-center justify-center gap-2">
-              {TYPE_ICONS[viewDriver.vehicle_type]} {viewDriver.vehicle_type} · {viewDriver.plate}
+              {TYPE_ICONS[viewDriver.vehicle_type]} {viewDriver.vehicle_type} ·{' '}
+              {viewDriver.plate?.startsWith('PENDING-')
+                ? <span className="text-amber-600 font-semibold">Plate Pending</span>
+                : viewDriver.plate}
             </p>
             <div className="flex justify-center gap-2 mt-2">
               <StatusBadge status={viewDriver.status} />
@@ -434,10 +503,42 @@ export default function Drivers() {
               }`}>
               <Car className="w-4 h-4" /> Vehicle
             </button>
+            <button onClick={() => setActiveTab('documents')}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                activeTab === 'documents' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
+              }`}>
+              <ClipboardCheck className="w-4 h-4" /> Docs
+            </button>
           </div>
 
           {activeTab === 'driver' && (
             <>
+              {viewDriver.plate?.startsWith('PENDING-') && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4">
+                  <p className="text-xs font-bold text-amber-800 flex items-center gap-1.5 mb-2">
+                    <AlertCircle className="w-3.5 h-3.5" /> Plate number needed before verifying
+                  </p>
+                  <p className="text-[11px] text-amber-700 mb-3">
+                    Check the Docs tab for their License/OR/CR photos, then enter the real plate and license numbers here.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <input className="field-input" placeholder="Plate No. *"
+                      value={plateEdit.plate}
+                      onChange={e => setPlateEdit(p => ({ ...p, plate: e.target.value }))} />
+                    <input className="field-input" placeholder="License No."
+                      value={plateEdit.licenseNo}
+                      onChange={e => setPlateEdit(p => ({ ...p, licenseNo: e.target.value }))} />
+                  </div>
+                  <button
+                    className="btn-primary w-full flex items-center justify-center gap-2"
+                    disabled={savingPlate}
+                    onClick={handleSavePlate}
+                  >
+                    {savingPlate ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Plate & License'}
+                  </button>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {[
                   { label: 'Route', val: viewDriver.route || '—', icon: <MapPin className="w-3 h-3" /> },
@@ -458,7 +559,15 @@ export default function Drivers() {
               <div className="flex gap-3">
                 {!viewDriver.verified && (
                   <button className="btn-primary flex-1 flex items-center justify-center gap-2"
-                    onClick={() => { verifyDriver(viewDriver.id); toast('✅ Driver verified!'); setViewDriver(null) }}>
+                    onClick={async () => {
+                      const { error } = await verifyDriver(viewDriver.id)
+                      if (error) {
+                        toast(error.message, 'error')
+                      } else {
+                        toast('✅ Driver verified!')
+                        setViewDriver(null)
+                      }
+                    }}>
                     <ShieldCheck className="w-4 h-4" /> Verify Driver
                   </button>
                 )}
@@ -519,6 +628,45 @@ export default function Drivers() {
                 <div className="flex flex-col items-center justify-center h-32 text-sub border border-dashed border-border rounded-xl">
                   <Car className="w-8 h-8 mb-2 opacity-20" />
                   <p className="font-medium text-sm">No vehicle registered</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'documents' && (
+            <>
+              {loadingDocs ? (
+                <div className="flex justify-center items-center h-32">
+                  <Loader2 className="w-6 h-6 text-green animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {[
+                    { key: 'license', label: "Driver's License" },
+                    { key: 'or',      label: 'OR (Official Receipt)' },
+                    { key: 'cr',      label: 'CR (Certificate of Registration)' },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="bg-surface rounded-xl p-3">
+                      <p className="text-[10px] text-sub uppercase tracking-wider font-bold mb-2">{label}</p>
+                      {documentUrls[key] ? (
+                        <a href={documentUrls[key]} target="_blank" rel="noreferrer" className="block">
+                          <img
+                            src={documentUrls[key]}
+                            alt={label}
+                            className="w-full h-40 object-cover rounded-lg border border-border hover:opacity-90 transition-opacity"
+                          />
+                          <p className="text-[11px] text-green font-semibold mt-1.5">Tap to view full size →</p>
+                        </a>
+                      ) : (
+                        <div className="flex items-center gap-2 h-16 border border-dashed border-border rounded-lg text-sub text-xs font-medium justify-center">
+                          <AlertCircle className="w-4 h-4" /> Not uploaded
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-sub text-center pt-1">
+                    Links expire after 5 minutes — reopen this tab to refresh them.
+                  </p>
                 </div>
               )}
             </>

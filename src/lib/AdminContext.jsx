@@ -91,8 +91,31 @@ export function AdminProvider({ children }) {
   }, [drivers])
 
   const verifyDriver = useCallback(async (id) => {
-    await supabase.from('drivers').update({ verified: true }).eq('id', id)
-    setDrivers(prev => prev.map(d => d.id === id ? { ...d, verified: true } : d))
+    const driver = drivers.find(d => d.id === id)
+    if (driver?.plate?.startsWith('PENDING-')) {
+      return { error: { message: 'Set this driver\'s real plate number (from their License/OR/CR photos) before verifying.' } }
+    }
+    const { error } = await supabase.from('drivers').update({ verified: true }).eq('id', id)
+    if (!error) setDrivers(prev => prev.map(d => d.id === id ? { ...d, verified: true } : d))
+    return { error }
+  }, [drivers])
+
+  // Self-registered drivers (see LoginPage.jsx) don't submit a plate or
+  // license number up front — admin reads those off the uploaded
+  // License/OR/CR photos and fills them in here before verifying. Their
+  // plate starts as a unique "PENDING-XXXXXXXX" placeholder until this
+  // runs at least once.
+  const updateDriverDetails = useCallback(async (id, { plate, licenseNo }) => {
+    const patch = {}
+    if (plate !== undefined) patch.plate = plate.trim().toUpperCase()
+    if (licenseNo !== undefined) patch.license_no = licenseNo.trim()
+    if (Object.keys(patch).length === 0) return { error: null }
+
+    const { error } = await supabase.from('drivers').update(patch).eq('id', id)
+    if (!error) {
+      setDrivers(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d))
+    }
+    return { error }
   }, [])
 
   // ── ADD DRIVER + VEHICLE together ─────────────────────────
@@ -287,7 +310,7 @@ export function AdminProvider({ children }) {
       routes, vehicles, payments, notifications, fareMatrix, activityLog,
       loading, sidebarOpen, setSidebarOpen,
       fetchAll,
-      toggleDriverStatus, verifyDriver, addDriver, deleteDriver,
+      toggleDriverStatus, verifyDriver, updateDriverDetails, addDriver, deleteDriver,
       resolveReport, updateReportStatus,
       toggleCustomerStatus,
       addRoute, toggleRouteStatus,
