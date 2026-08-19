@@ -289,6 +289,74 @@ export function AdminProvider({ children }) {
     if (entry) setActivityLog(prev => [entry, ...prev].slice(0, 50))
   }, [])
 
+  // ── SCHEDULE TEMPLATE + AUTO-GENERATE ──────────────────────
+  // Admin sets the default days/hours in Settings; "Auto-Generate
+  // Schedules" in Schedules.jsx uses it to bulk-create one schedule row
+  // per day for every verified driver who doesn't have any schedule yet.
+  const getScheduleTemplate = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('app_settings').select('value').eq('key', 'default_schedule_template').single()
+    if (error || !data) {
+      // Fall back to a sensible default if the settings row is somehow
+      // missing (e.g. migration not run yet) rather than hard-failing.
+      return { template: { days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], start_time: '06:00', end_time: '18:00' }, error: null }
+    }
+    return { template: data.value, error: null }
+  }, [])
+
+  const saveScheduleTemplate = useCallback(async (template) => {
+    const { error } = await supabase
+      .from('app_settings')
+      .upsert({ key: 'default_schedule_template', value: template, updated_at: new Date().toISOString() })
+    return { error }
+  }, [])
+
+  const generateSchedulesForVerifiedDrivers = useCallback(async () => {
+    const { template, error: templateError } = await getScheduleTemplate()
+    if (templateError) return { error: templateError }
+    if (!template?.days?.length || !template.start_time || !template.end_time) {
+      return { error: { message: 'Set a default schedule template in Settings first.' } }
+    }
+
+    const verifiedDrivers = drivers.filter(d => d.verified)
+    if (verifiedDrivers.length === 0) {
+      return { error: null, created: 0, skipped: 0 }
+    }
+
+    // Which of these verified drivers already have ANY schedule row?
+    // Those are left untouched — this only fills in drivers with none.
+    const { data: existing, error: existingError } = await supabase
+      .from('schedules')
+      .select('driver_id')
+      .in('driver_id', verifiedDrivers.map(d => d.id))
+    if (existingError) return { error: existingError }
+
+    const alreadyScheduled = new Set((existing || []).map(s => s.driver_id))
+    const toSchedule = verifiedDrivers.filter(d => !alreadyScheduled.has(d.id))
+
+    if (toSchedule.length === 0) {
+      return { error: null, created: 0, skipped: verifiedDrivers.length }
+    }
+
+    const rows = toSchedule.flatMap(d =>
+      template.days.map(day => ({
+        driver_id: d.id,
+        day_of_week: day,
+        start_time: template.start_time,
+        end_time: template.end_time,
+        is_active: true,
+      }))
+    )
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('schedules')
+      .insert(rows)
+      .select('*, drivers(name, vehicle_type, plate, color, status, route)')
+    if (insertError) return { error: insertError }
+
+    return { error: null, created: toSchedule.length, skipped: verifiedDrivers.length - toSchedule.length, inserted }
+  }, [drivers, getScheduleTemplate])
+
   // ── STATS ─────────────────────────────────────────────────
   const stats = {
     activeDrivers:       drivers.filter(d => d.status === 'active').length,
@@ -327,6 +395,7 @@ export function AdminProvider({ children }) {
       verifyVehicle,
       markNotificationRead, markAllNotificationsRead,
       logActivity,
+      getScheduleTemplate, saveScheduleTemplate, generateSchedulesForVerifiedDrivers,
       stats,
     }}>
       {children}
