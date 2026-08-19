@@ -23,9 +23,10 @@ export default function Customers() {
     return matchFilter && matchSearch
   })
 
-  const handleToggle = (id) => {
+  const handleToggle = async (id) => {
     const c = customers.find(x => x.id === id)
-    toggleCustomerStatus(id)
+    const { error } = await toggleCustomerStatus(id)
+    if (error) { toast('Failed: ' + error.message, 'error'); return }
     toast(`${c?.name || 'Commuter'} status updated`)
     setSelected(null)
   }

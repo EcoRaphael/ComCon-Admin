@@ -84,10 +84,11 @@ export function AdminProvider({ children }) {
   // ── DRIVERS ───────────────────────────────────────────────
   const toggleDriverStatus = useCallback(async (id) => {
     const driver = drivers.find(d => d.id === id)
-    if (!driver) return
+    if (!driver) return { error: { message: 'Driver not found.' } }
     const newStatus = driver.status === 'active' ? 'inactive' : 'active'
-    await supabase.from('drivers').update({ status: newStatus }).eq('id', id)
-    setDrivers(prev => prev.map(d => d.id === id ? { ...d, status: newStatus } : d))
+    const { error } = await supabase.from('drivers').update({ status: newStatus }).eq('id', id)
+    if (!error) setDrivers(prev => prev.map(d => d.id === id ? { ...d, status: newStatus } : d))
+    return { error }
   }, [drivers])
 
   const verifyDriver = useCallback(async (id) => {
@@ -183,7 +184,8 @@ export function AdminProvider({ children }) {
   // ── REPORTS ───────────────────────────────────────────────
   const resolveReport = useCallback(async (id) => {
     const report = reports.find(r => r.id === id)
-    await supabase.from('reports').update({ status: 'resolved' }).eq('id', id)
+    const { error } = await supabase.from('reports').update({ status: 'resolved' }).eq('id', id)
+    if (error) return { error }
     setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'resolved' } : r))
 
     if (report?.customer_id) {
@@ -199,11 +201,13 @@ export function AdminProvider({ children }) {
     } else if (report) {
       console.warn('[resolveReport] report has no customer_id — no notification created:', report.id)
     }
+    return { error: null }
   }, [reports])
 
   const updateReportStatus = useCallback(async (id, status) => {
     const report = reports.find(r => r.id === id)
-    await supabase.from('reports').update({ status }).eq('id', id)
+    const { error } = await supabase.from('reports').update({ status }).eq('id', id)
+    if (error) return { error }
     setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r))
 
     if (report?.customer_id) {
@@ -219,39 +223,44 @@ export function AdminProvider({ children }) {
     } else if (report) {
       console.warn('[updateReportStatus] report has no customer_id — no notification created:', report.id)
     }
+    return { error: null }
   }, [reports])
 
   // ── CUSTOMERS ─────────────────────────────────────────────
   const toggleCustomerStatus = useCallback(async (id) => {
     const customer = customers.find(c => c.id === id)
-    if (!customer) return
+    if (!customer) return { error: { message: 'Customer not found.' } }
     const newStatus = customer.status === 'active' ? 'suspended' : 'active'
-    await supabase.from('users').update({ status: newStatus }).eq('id', id)
-    setCustomers(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c))
+    const { error } = await supabase.from('users').update({ status: newStatus }).eq('id', id)
+    if (!error) setCustomers(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c))
+    return { error }
   }, [customers])
 
   // ── ROUTES ────────────────────────────────────────────────
   const addRoute = useCallback(async (form) => {
-    const { data } = await supabase.from('routes').insert({
+    const { data, error } = await supabase.from('routes').insert({
       name: form.name, origin: form.from, destination: form.to,
       distance_km: parseFloat(form.distance) || 0,
       vehicle_types: form.vehicleTypes, status: 'active',
     }).select().single()
     if (data) setRoutes(prev => [data, ...prev])
+    return { error }
   }, [])
 
   const toggleRouteStatus = useCallback(async (id) => {
     const route = routes.find(r => r.id === id)
-    if (!route) return
+    if (!route) return { error: { message: 'Route not found.' } }
     const newStatus = route.status === 'active' ? 'inactive' : 'active'
-    await supabase.from('routes').update({ status: newStatus }).eq('id', id)
-    setRoutes(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
+    const { error } = await supabase.from('routes').update({ status: newStatus }).eq('id', id)
+    if (!error) setRoutes(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
+    return { error }
   }, [routes])
 
   // ── FARE MATRIX ───────────────────────────────────────────
   const updateFare = useCallback(async (vehicleType, updates) => {
-    await supabase.from('fare_matrix').update({ ...updates, updated_at: new Date().toISOString() }).eq('vehicle_type', vehicleType)
-    setFareMatrix(prev => prev.map(f => f.vehicle_type === vehicleType ? { ...f, ...updates } : f))
+    const { error } = await supabase.from('fare_matrix').update({ ...updates, updated_at: new Date().toISOString() }).eq('vehicle_type', vehicleType)
+    if (!error) setFareMatrix(prev => prev.map(f => f.vehicle_type === vehicleType ? { ...f, ...updates } : f))
+    return { error }
   }, [])
 
   // ── VEHICLES ──────────────────────────────────────────────

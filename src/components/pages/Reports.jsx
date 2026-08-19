@@ -45,8 +45,9 @@ export default function Reports() {
     return matchFilter && matchSearch
   })
 
-  const handleResolve = (id) => {
-    resolveReport(id)
+  const handleResolve = async (id) => {
+    const { error } = await resolveReport(id)
+    if (error) { toast('Failed: ' + error.message, 'error'); return }
     toast('Report resolved')
     setSelected(null)
   }
@@ -134,7 +135,10 @@ export default function Reports() {
                     <td>
                       <select
                         value={r.status}
-                        onChange={e => { updateReportStatus(r.id, e.target.value); toast('Status updated') }}
+                        onChange={async e => {
+                          const { error } = await updateReportStatus(r.id, e.target.value)
+                          toast(error ? 'Failed: ' + error.message : 'Status updated', error ? 'error' : undefined)
+                        }}
                         className="text-xs font-medium px-2 py-1 rounded-lg border border-border bg-white cursor-pointer focus:ring-2 focus:ring-green/20 outline-none"
                       >
                         <option value="pending">⏳ Pending</option>
@@ -154,7 +158,10 @@ export default function Reports() {
                         {r.status !== 'resolved' && (
                           <button
                             className="p-2 text-green hover:bg-green-light/30 rounded-lg transition-colors border border-transparent hover:border-green/20"
-                            onClick={() => { resolveReport(r.id); toast('Report resolved') }}
+                            onClick={async () => {
+                              const { error } = await resolveReport(r.id)
+                              toast(error ? 'Failed: ' + error.message : 'Report resolved', error ? 'error' : undefined)
+                            }}
                             title="Mark as Resolved"
                           >
                             <Check size={16} />

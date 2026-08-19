@@ -347,7 +347,10 @@ export default function Drivers() {
                           </button>
                         )}
                         <button className="btn-ghost btn-sm hover:border-brand-red hover:text-brand-red"
-                          onClick={() => { toggleDriverStatus(d.id); toast(`⚡ ${d.name} status updated`) }}>
+                          onClick={async () => {
+                            const { error } = await toggleDriverStatus(d.id)
+                            toast(error ? 'Failed: ' + error.message : `⚡ ${d.name} status updated`, error ? 'error' : undefined)
+                          }}>
                           {d.status === 'active' ? 'Suspend' : 'Activate'}
                         </button>
                         <button
@@ -572,7 +575,12 @@ export default function Drivers() {
                   </button>
                 )}
                 <button className="btn-danger flex-1 flex items-center justify-center gap-2"
-                  onClick={() => { toggleDriverStatus(viewDriver.id); toast('⚡ Status updated'); setViewDriver(null) }}>
+                  onClick={async () => {
+                    const { error } = await toggleDriverStatus(viewDriver.id)
+                    if (error) { toast('Failed: ' + error.message, 'error'); return }
+                    toast('⚡ Status updated')
+                    setViewDriver(null)
+                  }}>
                   <Power className="w-4 h-4" /> {viewDriver.status === 'active' ? 'Suspend' : 'Activate'}
                 </button>
                 <button

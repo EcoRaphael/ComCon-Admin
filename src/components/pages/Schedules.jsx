@@ -191,6 +191,8 @@ export default function Schedules() {
     if (!error) {
       setSchedules(prev => prev.map(s => s.id === id ? { ...s, is_active: !current } : s))
       toast(!current ? 'Schedule activated' : 'Schedule paused')
+    } else {
+      toast('Failed to update schedule')
     }
   }
 
