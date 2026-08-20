@@ -1,4 +1,6 @@
 // src/components/ui/index.jsx
+import { createPortal } from 'react-dom'
+import { useEffect } from 'react'
 // All small reusable UI primitives
 
 import clsx from 'clsx'
@@ -92,8 +94,27 @@ export function CardHead({ title, subtitle, action }) {
 
 /* ── Modal ── */
 export function Modal({ open, onClose, title, children }) {
+  // Lock body scroll while open so the page behind it can't also scroll —
+  // hook must run unconditionally (before the `if (!open)` early return)
+  // per React's rules, so the open-check lives inside the effect instead.
+  useEffect(() => {
+    if (!open) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+  }, [open])
+
   if (!open) return null
-  return (
+  // Rendered via a portal directly into document.body — NOT as a normal
+  // nested child of the page. AdminLayout locks the whole app to
+  // `h-screen overflow-hidden` at the root, with <main> as the actual
+  // scrolling container; a `position: fixed` element nested deep inside
+  // that structure can end up positioned relative to the wrong ancestor
+  // instead of the real browser viewport, which is exactly what caused
+  // the modal to only be visible after scrolling. Portaling out to
+  // document.body sidesteps that entirely, regardless of how any page's
+  // layout is structured, now or in the future.
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-navy/50 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -108,7 +129,8 @@ export function Modal({ open, onClose, title, children }) {
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
