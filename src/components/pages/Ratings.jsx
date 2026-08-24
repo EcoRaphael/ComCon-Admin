@@ -98,10 +98,7 @@ export default function Ratings() {
               const initials = d.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || 'DR'
               return (
                 <div key={d.id} className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                    style={{ background: d.color || 'var(--color-primary)' }}>
-                    {initials}
-                  </div>
+                  <Avatar userId={d.user_id} initials={initials} color={d.color || 'var(--color-primary)'} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-sm text-navy truncate">{d.name}</p>
                     <StarDisplay value={Number(d.rating || 0)} size={11} />
