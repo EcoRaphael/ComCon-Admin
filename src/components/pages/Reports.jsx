@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
-import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal } from '@/components/ui'
+import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal, Avatar } from '@/components/ui'
 import {
   AlertTriangle, Search, CheckCircle2, Eye,
   Check, Clock, Filter, FileText, User,
@@ -118,8 +118,18 @@ export default function Reports() {
               <tbody>
                 {filtered.map(r => (
                   <tr key={r.id} className="group hover:bg-surface/30 transition-colors">
-                    <td className="font-semibold text-sm text-navy">{r.users?.name || '—'}</td>
-                    <td className="text-sm">{r.drivers?.name || '—'}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <Avatar userId={r.customer_id} initials={r.users?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'CO'} color="#1565c0" size="sm" />
+                        <span className="font-semibold text-sm text-navy">{r.users?.name || '—'}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <Avatar userId={r.drivers?.user_id} initials={r.drivers?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'DR'} color={r.drivers?.color || 'var(--color-primary)'} size="sm" />
+                        <span className="text-sm">{r.drivers?.name || '—'}</span>
+                      </div>
+                    </td>
                     <td>
                       <span className="text-xs font-bold uppercase tracking-wider text-navy opacity-80">
                         {r.issue_type}
@@ -210,15 +220,25 @@ export default function Reports() {
                 <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5 flex items-center gap-1">
                   <User size={10} /> Filed By
                 </p>
-                <p className="font-semibold text-sm text-navy">{r.users?.name || '—'}</p>
-                <p className="text-xs text-sub mt-0.5">{r.users?.email || ''}</p>
+                <div className="flex items-center gap-2">
+                  <Avatar userId={r.customer_id} initials={r.users?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'CO'} color="#1565c0" size="sm" />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{r.users?.name || '—'}</p>
+                    <p className="text-xs text-sub mt-0.5">{r.users?.email || ''}</p>
+                  </div>
+                </div>
               </div>
               <div className="bg-surface rounded-xl p-3">
                 <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5 flex items-center gap-1">
                   <Car size={10} /> Against Driver
                 </p>
-                <p className="font-semibold text-sm text-navy">{r.drivers?.name || '—'}</p>
-                <p className="text-xs text-sub font-mono mt-0.5">{r.drivers?.plate || ''}</p>
+                <div className="flex items-center gap-2">
+                  <Avatar userId={r.drivers?.user_id} initials={r.drivers?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'DR'} color={r.drivers?.color || 'var(--color-primary)'} size="sm" />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{r.drivers?.name || '—'}</p>
+                    <p className="text-xs text-sub font-mono mt-0.5">{r.drivers?.plate || ''}</p>
+                  </div>
+                </div>
               </div>
             </div>
 

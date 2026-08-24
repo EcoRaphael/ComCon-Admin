@@ -93,7 +93,7 @@ export default function Customers() {
                   <tr key={c.id}>
                     <td>
                       <div className="flex items-center gap-2.5">
-                        <Avatar initials={c.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'CO'} color="#1565c0" size="sm" />
+                        <Avatar userId={c.id} initials={c.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'CO'} color="#1565c0" size="sm" />
                         <div>
                           <p className="font-semibold text-sm">{c.name}</p>
                           <p className="text-xs text-sub">{c.email || '—'}</p>
@@ -132,6 +132,7 @@ export default function Customers() {
             {/* Avatar + name */}
             <div className="flex items-center gap-4">
               <Avatar
+                userId={c.id}
                 initials={c.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'CO'}
                 color="#1565c0"
                 size="lg"

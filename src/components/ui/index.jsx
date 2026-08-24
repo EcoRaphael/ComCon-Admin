@@ -1,19 +1,20 @@
 // src/components/ui/index.jsx
 import { createPortal } from 'react-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 // All small reusable UI primitives
 
 import clsx from 'clsx'
+import { supabase } from '@/lib/supabase/client'
 
 /* ── Badge ── */
 export function Badge({ children, variant = 'gray', className }) {
   const variants = {
-    green:  'badge-green',
-    red:    'badge-red',
-    amber:  'badge-amber',
-    blue:   'badge-blue',
+    green: 'badge-green',
+    red: 'badge-red',
+    amber: 'badge-amber',
+    blue: 'badge-blue',
     purple: 'badge-purple',
-    gray:   'badge-gray',
+    gray: 'badge-gray',
   }
   return (
     <span className={clsx(variants[variant] || 'badge-gray', className)}>
@@ -26,32 +27,46 @@ export function Badge({ children, variant = 'gray', className }) {
 /* ── Status Badge (maps strings → variants) ── */
 export function StatusBadge({ status }) {
   const map = {
-    active:       { v: 'green',  label: 'Active' },
-    inactive:     { v: 'red',    label: 'Off Duty' },
-    completed:    { v: 'green',  label: 'Completed' },
-    ongoing:      { v: 'blue',   label: 'Ongoing' },
-    pending:      { v: 'amber',  label: 'Pending' },
-    cancelled:    { v: 'red',    label: 'Cancelled' },
-    resolved:     { v: 'green',  label: 'Resolved' },
+    active: { v: 'green', label: 'Active' },
+    inactive: { v: 'red', label: 'Off Duty' },
+    completed: { v: 'green', label: 'Completed' },
+    ongoing: { v: 'blue', label: 'Ongoing' },
+    pending: { v: 'amber', label: 'Pending' },
+    cancelled: { v: 'red', label: 'Cancelled' },
+    resolved: { v: 'green', label: 'Resolved' },
     'under review': { v: 'blue', label: 'Under Review' },
-    suspended:    { v: 'red',    label: 'Suspended' },
-    High:         { v: 'red',    label: 'High' },
-    Medium:       { v: 'amber',  label: 'Medium' },
-    Low:          { v: 'green',  label: 'Low' },
+    suspended: { v: 'red', label: 'Suspended' },
+    High: { v: 'red', label: 'High' },
+    Medium: { v: 'amber', label: 'Medium' },
+    Low: { v: 'green', label: 'Low' },
   }
   const { v, label } = map[status] || { v: 'gray', label: status }
   return <Badge variant={v}>{label}</Badge>
 }
 
 /* ── Avatar ── */
-export function Avatar({ initials, color, size = 'md', className }) {
+export function Avatar({ initials, color, size = 'md', className, userId }) {
+  const [broken, setBroken] = useState(false)
   const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-16 h-16 text-xl' }
+
+  // If a userId is given, check for a real uploaded photo (same bucket +
+  // path convention as AdminProfile.jsx / the commuter+driver app) and
+  // show it instead of initials. getPublicUrl is a pure client-side
+  // string construction — no network call — so this is cheap even in a
+  // long list.
+  const publicUrl = userId
+    ? supabase.storage.from('avatar').getPublicUrl(`avatar-${userId}.jpg`).data?.publicUrl
+    : null
+  const showImg = publicUrl && !broken
+
   return (
     <div
-      className={clsx('rounded-full flex items-center justify-center font-extrabold text-white flex-shrink-0', sizes[size], className)}
-      style={{ background: color || '#00b86b' }}
+      className={clsx('rounded-full flex items-center justify-center font-extrabold text-white flex-shrink-0 overflow-hidden', sizes[size], className)}
+      style={{ background: showImg ? undefined : (color || '#00b86b') }}
     >
-      {initials}
+      {showImg
+        ? <img src={publicUrl} alt="" className="w-full h-full object-cover" onError={() => setBroken(true)} />
+        : initials}
     </div>
   )
 }

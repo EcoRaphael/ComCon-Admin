@@ -39,9 +39,9 @@ export function AdminProvider({ children }) {
         { data: activityData },
       ] = await Promise.all([
         supabase.from('drivers').select('*').order('created_at', { ascending: false }),
-        supabase.from('bookings').select('*, users!customer_id(name,phone,email), drivers!driver_id(name,plate,vehicle_type)').order('created_at', { ascending: false }),
-        supabase.from('reports').select('*, users!customer_id(name), drivers!driver_id(name,plate)').order('created_at', { ascending: false }),
-        supabase.from('ratings').select('*, users!customer_id(name), drivers!driver_id(name,vehicle_type)').order('created_at', { ascending: false }),
+        supabase.from('bookings').select('*, users!customer_id(name,phone,email), drivers!driver_id(name,plate,vehicle_type,user_id,color)').order('created_at', { ascending: false }),
+        supabase.from('reports').select('*, users!customer_id(name), drivers!driver_id(name,plate,user_id,color)').order('created_at', { ascending: false }),
+        supabase.from('ratings').select('*, customer:users!customer_id(id, name, email), driver:drivers!driver_id(id, name, vehicle_type, plate, color, user_id)').order('created_at', { ascending: false }),
         supabase.from('users').select('*').eq('role', 'customer').order('created_at', { ascending: false }),
         supabase.from('routes').select('*').order('created_at', { ascending: false }),
         supabase.from('vehicles').select('*, drivers!driver_id(name,route,status)').order('created_at', { ascending: false }),

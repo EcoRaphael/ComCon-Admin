@@ -299,7 +299,7 @@ export default function Drivers() {
                   <tr key={d.id}>
                     <td>
                       <div className="flex items-center gap-2.5">
-                        <Avatar initials={initials(d.name)} color={d.color || 'var(--color-primary)'} size="sm" />
+                        <Avatar userId={d.user_id} initials={initials(d.name)} color={d.color || 'var(--color-primary)'} size="sm" />
                         <div>
                           <p className="font-semibold text-sm">{d.name}</p>
                           <p className="text-xs text-sub">{d.license_no || '—'}</p>
@@ -477,7 +477,7 @@ export default function Drivers() {
       {viewDriver && (
         <Modal open={!!viewDriver} onClose={() => setViewDriver(null)} title={`Driver Profile`}>
           <div className="text-center mb-4">
-            <Avatar initials={initials(viewDriver.name)} color={viewDriver.color || 'var(--color-primary)'} size="lg" className="mx-auto mb-3" />
+            <Avatar userId={viewDriver.user_id} initials={initials(viewDriver.name)} color={viewDriver.color || 'var(--color-primary)'} size="lg" className="mx-auto mb-3" />
             <p className="font-bold text-lg">{viewDriver.name}</p>
             <p className="text-sm text-sub flex items-center justify-center gap-2">
               {TYPE_ICONS[viewDriver.vehicle_type]} {viewDriver.vehicle_type} ·{' '}

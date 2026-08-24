@@ -174,6 +174,7 @@ export default function Ratings() {
                     <td>
                       <div className="flex items-center gap-2">
                         <Avatar
+                          userId={r.customer?.id}
                           initials={r.customer?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'CO'}
                           color="#1565c0"
                           size="sm"
