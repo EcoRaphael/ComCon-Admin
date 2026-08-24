@@ -183,8 +183,18 @@ export default function Ratings() {
                       </div>
                     </td>
                     <td>
-                      <p className="text-sm font-medium">{r.driver?.name || '—'}</p>
-                      <p className="text-xs text-sub">{r.driver?.vehicle_type || ''}</p>
+                      <div className="flex items-center gap-2">
+                        <Avatar
+                          userId={r.driver?.user_id}
+                          initials={r.driver?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'DR'}
+                          color={r.driver?.color || 'var(--color-primary)'}
+                          size="sm"
+                        />
+                        <div>
+                          <p className="text-sm font-medium">{r.driver?.name || '—'}</p>
+                          <p className="text-xs text-sub">{r.driver?.vehicle_type || ''}</p>
+                        </div>
+                      </div>
                     </td>
                     <td>
                       <div className="flex items-center gap-1.5">
@@ -227,14 +237,34 @@ export default function Ratings() {
             {/* Commuter & Driver */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface rounded-xl p-3">
-                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1">Commuter</p>
-                <p className="font-semibold text-sm text-navy">{r.customer?.name || '—'}</p>
-                <p className="text-xs text-sub">{r.customer?.email || ''}</p>
+                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5">Commuter</p>
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    userId={r.customer?.id}
+                    initials={r.customer?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'CO'}
+                    color="#1565c0"
+                    size="sm"
+                  />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{r.customer?.name || '—'}</p>
+                    <p className="text-xs text-sub">{r.customer?.email || ''}</p>
+                  </div>
+                </div>
               </div>
               <div className="bg-surface rounded-xl p-3">
-                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1">Driver</p>
-                <p className="font-semibold text-sm text-navy">{r.driver?.name || '—'}</p>
-                <p className="text-xs text-sub">{r.driver?.vehicle_type || ''} · {r.driver?.plate || ''}</p>
+                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5">Driver</p>
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    userId={r.driver?.user_id}
+                    initials={r.driver?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'DR'}
+                    color={r.driver?.color || 'var(--color-primary)'}
+                    size="sm"
+                  />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{r.driver?.name || '—'}</p>
+                    <p className="text-xs text-sub">{r.driver?.vehicle_type || ''} · {r.driver?.plate || ''}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
