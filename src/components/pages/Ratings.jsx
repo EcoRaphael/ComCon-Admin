@@ -50,8 +50,8 @@ export default function Ratings() {
       .from('ratings')
       .select(`
       *,
-      customer:users!ratings_customer_id_fkey ( name, email ),
-      driver:drivers!ratings_driver_id_fkey   ( name, vehicle_type, plate )
+      customer:users!ratings_customer_id_fkey ( id, name, email ),
+      driver:drivers!ratings_driver_id_fkey   ( id, name, vehicle_type, plate, color, user_id )
     `)
       .order('created_at', { ascending: false })
     if (error) { toast('Failed to load ratings'); console.error(error) }
