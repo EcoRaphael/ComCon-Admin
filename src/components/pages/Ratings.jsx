@@ -50,8 +50,8 @@ export default function Ratings() {
       .from('ratings')
       .select(`
       *,
-      customer:users!ratings_customer_id_fkey ( name, email ),
-      driver:drivers!ratings_driver_id_fkey   ( name, vehicle_type, plate )
+      customer:users!ratings_customer_id_fkey ( id, name, email ),
+      driver:drivers!ratings_driver_id_fkey   ( id, name, vehicle_type, plate, color, user_id )
     `)
       .order('created_at', { ascending: false })
     if (error) { toast('Failed to load ratings'); console.error(error) }
@@ -98,10 +98,7 @@ export default function Ratings() {
               const initials = d.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || 'DR'
               return (
                 <div key={d.id} className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                    style={{ background: d.color || 'var(--color-primary)' }}>
-                    {initials}
-                  </div>
+                  <Avatar userId={d.user_id} initials={initials} color={d.color || 'var(--color-primary)'} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-sm text-navy truncate">{d.name}</p>
                     <StarDisplay value={Number(d.rating || 0)} size={11} />
@@ -174,6 +171,7 @@ export default function Ratings() {
                     <td>
                       <div className="flex items-center gap-2">
                         <Avatar
+                          userId={r.customer?.id}
                           initials={r.customer?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'CO'}
                           color="#1565c0"
                           size="sm"
@@ -182,8 +180,18 @@ export default function Ratings() {
                       </div>
                     </td>
                     <td>
-                      <p className="text-sm font-medium">{r.driver?.name || '—'}</p>
-                      <p className="text-xs text-sub">{r.driver?.vehicle_type || ''}</p>
+                      <div className="flex items-center gap-2">
+                        <Avatar
+                          userId={r.driver?.user_id}
+                          initials={r.driver?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'DR'}
+                          color={r.driver?.color || 'var(--color-primary)'}
+                          size="sm"
+                        />
+                        <div>
+                          <p className="text-sm font-medium">{r.driver?.name || '—'}</p>
+                          <p className="text-xs text-sub">{r.driver?.vehicle_type || ''}</p>
+                        </div>
+                      </div>
                     </td>
                     <td>
                       <div className="flex items-center gap-1.5">
@@ -226,14 +234,34 @@ export default function Ratings() {
             {/* Commuter & Driver */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface rounded-xl p-3">
-                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1">Commuter</p>
-                <p className="font-semibold text-sm text-navy">{r.customer?.name || '—'}</p>
-                <p className="text-xs text-sub">{r.customer?.email || ''}</p>
+                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5">Commuter</p>
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    userId={r.customer?.id}
+                    initials={r.customer?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'CO'}
+                    color="#1565c0"
+                    size="sm"
+                  />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{r.customer?.name || '—'}</p>
+                    <p className="text-xs text-sub">{r.customer?.email || ''}</p>
+                  </div>
+                </div>
               </div>
               <div className="bg-surface rounded-xl p-3">
-                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1">Driver</p>
-                <p className="font-semibold text-sm text-navy">{r.driver?.name || '—'}</p>
-                <p className="text-xs text-sub">{r.driver?.vehicle_type || ''} · {r.driver?.plate || ''}</p>
+                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5">Driver</p>
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    userId={r.driver?.user_id}
+                    initials={r.driver?.name?.split(' ').map(w => w[0]).join('').slice(0,2) || 'DR'}
+                    color={r.driver?.color || 'var(--color-primary)'}
+                    size="sm"
+                  />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{r.driver?.name || '—'}</p>
+                    <p className="text-xs text-sub">{r.driver?.vehicle_type || ''} · {r.driver?.plate || ''}</p>
+                  </div>
+                </div>
               </div>
             </div>
 

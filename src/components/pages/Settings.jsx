@@ -1,5 +1,5 @@
 //src/components/pages/Settings.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useToastCtx } from '@/lib/ToastContext'
 import { useAdmin } from '@/lib/AdminContext'
 import { Card, CardHead } from '@/components/ui'
@@ -23,6 +23,8 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 
+const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
 const TECH_STACK = [
   { icon: <Globe size={14} />,      label: 'Frontend',  val: 'React.js + Vite + Tailwind CSS' },
   { icon: <Cpu size={14} />,        label: 'Backend',   val: 'Node.js + Express.js' },
@@ -44,7 +46,35 @@ const DB_TABLES = ['users', 'drivers', 'bookings', 'payments', 'routes', 'vehicl
 
 export default function Settings() {
   const { toast }          = useToastCtx()
-  const { stats, fetchAll } = useAdmin()
+  const { stats, fetchAll, getScheduleTemplate, saveScheduleTemplate } = useAdmin()
+
+  // ── Default schedule template ──────────────────────────────────────
+  const [template, setTemplate] = useState({ days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], start_time: '06:00', end_time: '18:00' })
+  const [loadingTemplate, setLoadingTemplate] = useState(true)
+  const [savingTemplate,  setSavingTemplate]  = useState(false)
+
+  useEffect(() => {
+    getScheduleTemplate().then(({ template: t }) => {
+      if (t) setTemplate(t)
+      setLoadingTemplate(false)
+    })
+  }, [getScheduleTemplate])
+
+  const toggleDay = (day) => {
+    setTemplate(prev => ({
+      ...prev,
+      days: prev.days.includes(day) ? prev.days.filter(d => d !== day) : [...prev.days, day],
+    }))
+  }
+
+  const handleSaveTemplate = async () => {
+    if (template.days.length === 0) { toast('Select at least one day.'); return }
+    if (template.start_time >= template.end_time) { toast('End time must be after start time.'); return }
+    setSavingTemplate(true)
+    const { error } = await saveScheduleTemplate(template)
+    setSavingTemplate(false)
+    toast(error ? 'Failed to save: ' + error.message : '✅ Default schedule template saved')
+  }
 
   // ── DB Connection state ──────────────────────────────────────────
   const [connStatus,  setConnStatus]  = useState(null)   // null | { ok, ms, tables }
@@ -304,6 +334,69 @@ export default function Settings() {
                   <RefreshCw size={13} /> Sync Data
                 </button>
               </div>
+            </div>
+          </Card>
+
+          {/* ── Default Schedule Template ── */}
+          <Card>
+            <CardHead
+              title="Default Schedule Template"
+              subtitle="Used by 'Auto-Generate Schedules' on the Schedules page"
+            />
+            <div className="p-4 space-y-4">
+              {loadingTemplate ? (
+                <p className="text-xs text-sub">Loading...</p>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-sub mb-2 block">Days</label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {WEEK_DAYS.map(day => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => toggleDay(day)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                            template.days.includes(day)
+                              ? 'bg-green text-white border-green'
+                              : 'bg-surface text-sub border-border hover:border-green/40'
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-sub mb-1 block">Start Time</label>
+                      <input
+                        type="time"
+                        className="field-input"
+                        value={template.start_time}
+                        onChange={e => setTemplate(prev => ({ ...prev, start_time: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-sub mb-1 block">End Time</label>
+                      <input
+                        type="time"
+                        className="field-input"
+                        value={template.end_time}
+                        onChange={e => setTemplate(prev => ({ ...prev, end_time: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    className="btn-primary w-full text-sm py-2.5 flex items-center justify-center gap-2"
+                    disabled={savingTemplate}
+                    onClick={handleSaveTemplate}
+                  >
+                    {savingTemplate ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                    Save Template
+                  </button>
+                </>
+              )}
             </div>
           </Card>
 

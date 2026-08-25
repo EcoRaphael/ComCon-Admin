@@ -1,17 +1,20 @@
 // src/components/ui/index.jsx
+import { createPortal } from 'react-dom'
+import { useEffect, useState } from 'react'
 // All small reusable UI primitives
 
 import clsx from 'clsx'
+import { supabase } from '@/lib/supabase/client'
 
 /* ── Badge ── */
 export function Badge({ children, variant = 'gray', className }) {
   const variants = {
-    green:  'badge-green',
-    red:    'badge-red',
-    amber:  'badge-amber',
-    blue:   'badge-blue',
+    green: 'badge-green',
+    red: 'badge-red',
+    amber: 'badge-amber',
+    blue: 'badge-blue',
     purple: 'badge-purple',
-    gray:   'badge-gray',
+    gray: 'badge-gray',
   }
   return (
     <span className={clsx(variants[variant] || 'badge-gray', className)}>
@@ -24,32 +27,46 @@ export function Badge({ children, variant = 'gray', className }) {
 /* ── Status Badge (maps strings → variants) ── */
 export function StatusBadge({ status }) {
   const map = {
-    active:       { v: 'green',  label: 'Active' },
-    inactive:     { v: 'red',    label: 'Off Duty' },
-    completed:    { v: 'green',  label: 'Completed' },
-    ongoing:      { v: 'blue',   label: 'Ongoing' },
-    pending:      { v: 'amber',  label: 'Pending' },
-    cancelled:    { v: 'red',    label: 'Cancelled' },
-    resolved:     { v: 'green',  label: 'Resolved' },
+    active: { v: 'green', label: 'Active' },
+    inactive: { v: 'red', label: 'Off Duty' },
+    completed: { v: 'green', label: 'Completed' },
+    ongoing: { v: 'blue', label: 'Ongoing' },
+    pending: { v: 'amber', label: 'Pending' },
+    cancelled: { v: 'red', label: 'Cancelled' },
+    resolved: { v: 'green', label: 'Resolved' },
     'under review': { v: 'blue', label: 'Under Review' },
-    suspended:    { v: 'red',    label: 'Suspended' },
-    High:         { v: 'red',    label: 'High' },
-    Medium:       { v: 'amber',  label: 'Medium' },
-    Low:          { v: 'green',  label: 'Low' },
+    suspended: { v: 'red', label: 'Suspended' },
+    High: { v: 'red', label: 'High' },
+    Medium: { v: 'amber', label: 'Medium' },
+    Low: { v: 'green', label: 'Low' },
   }
   const { v, label } = map[status] || { v: 'gray', label: status }
   return <Badge variant={v}>{label}</Badge>
 }
 
 /* ── Avatar ── */
-export function Avatar({ initials, color, size = 'md', className }) {
+export function Avatar({ initials, color, size = 'md', className, userId }) {
+  const [broken, setBroken] = useState(false)
   const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-16 h-16 text-xl' }
+
+  // If a userId is given, check for a real uploaded photo (same bucket +
+  // path convention as AdminProfile.jsx / the commuter+driver app) and
+  // show it instead of initials. getPublicUrl is a pure client-side
+  // string construction — no network call — so this is cheap even in a
+  // long list.
+  const publicUrl = userId
+    ? supabase.storage.from('avatar').getPublicUrl(`avatar-${userId}.jpg`).data?.publicUrl
+    : null
+  const showImg = publicUrl && !broken
+
   return (
     <div
-      className={clsx('rounded-full flex items-center justify-center font-extrabold text-white flex-shrink-0', sizes[size], className)}
-      style={{ background: color || '#00b86b' }}
+      className={clsx('rounded-full flex items-center justify-center font-extrabold text-white flex-shrink-0 overflow-hidden', sizes[size], className)}
+      style={{ background: showImg ? undefined : (color || '#00b86b') }}
     >
-      {initials}
+      {showImg
+        ? <img src={publicUrl} alt="" className="w-full h-full object-cover" onError={() => setBroken(true)} />
+        : initials}
     </div>
   )
 }
@@ -92,8 +109,27 @@ export function CardHead({ title, subtitle, action }) {
 
 /* ── Modal ── */
 export function Modal({ open, onClose, title, children }) {
+  // Lock body scroll while open so the page behind it can't also scroll —
+  // hook must run unconditionally (before the `if (!open)` early return)
+  // per React's rules, so the open-check lives inside the effect instead.
+  useEffect(() => {
+    if (!open) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+  }, [open])
+
   if (!open) return null
-  return (
+  // Rendered via a portal directly into document.body — NOT as a normal
+  // nested child of the page. AdminLayout locks the whole app to
+  // `h-screen overflow-hidden` at the root, with <main> as the actual
+  // scrolling container; a `position: fixed` element nested deep inside
+  // that structure can end up positioned relative to the wrong ancestor
+  // instead of the real browser viewport, which is exactly what caused
+  // the modal to only be visible after scrolling. Portaling out to
+  // document.body sidesteps that entirely, regardless of how any page's
+  // layout is structured, now or in the future.
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-navy/50 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -108,7 +144,8 @@ export function Modal({ open, onClose, title, children }) {
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
-import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal } from '@/components/ui'
+import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal, Avatar } from '@/components/ui'
 import {
   CheckCircle2, Clock, XCircle, Activity, Search,
   Eye, Wallet, Car, Bus,
@@ -148,12 +148,22 @@ export default function Bookings() {
                 {filtered.map(b => (
                   <tr key={b.id}>
                     <td>
-                      <p className="font-medium text-sm">{b.users?.name || '—'}</p>
-                      <p className="text-xs text-sub">{b.users?.phone || ''}</p>
+                      <div className="flex items-center gap-2">
+                        <Avatar userId={b.customer_id} initials={b.users?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'CO'} color="#1565c0" size="sm" />
+                        <div>
+                          <p className="font-medium text-sm">{b.users?.name || '—'}</p>
+                          <p className="text-xs text-sub">{b.users?.phone || ''}</p>
+                        </div>
+                      </div>
                     </td>
                     <td>
-                      <p className="text-sm">{b.drivers?.name || '—'}</p>
-                      <p className="text-xs text-sub font-mono">{b.drivers?.plate || ''}</p>
+                      <div className="flex items-center gap-2">
+                        <Avatar userId={b.drivers?.user_id} initials={b.drivers?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'DR'} color={b.drivers?.color || 'var(--color-primary)'} size="sm" />
+                        <div>
+                          <p className="text-sm">{b.drivers?.name || '—'}</p>
+                          <p className="text-xs text-sub font-mono">{b.drivers?.plate || ''}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="text-xs text-sub">{b.pickup} → {b.dropoff}</td>
                     <td className="text-sm">{b.vehicle_type}</td>
@@ -223,15 +233,25 @@ export default function Bookings() {
                 <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5 flex items-center gap-1">
                   <User size={10} /> Commuter
                 </p>
-                <p className="font-semibold text-sm text-navy">{b.users?.name || '—'}</p>
-                <p className="text-xs text-sub mt-0.5">{b.users?.phone || '—'}</p>
+                <div className="flex items-center gap-2">
+                  <Avatar userId={b.customer_id} initials={b.users?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'CO'} color="#1565c0" size="sm" />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{b.users?.name || '—'}</p>
+                    <p className="text-xs text-sub mt-0.5">{b.users?.phone || '—'}</p>
+                  </div>
+                </div>
               </div>
               <div className="bg-surface rounded-xl p-3">
                 <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5 flex items-center gap-1">
                   <Car size={10} /> Driver
                 </p>
-                <p className="font-semibold text-sm text-navy">{b.drivers?.name || '—'}</p>
-                <p className="text-xs text-sub font-mono mt-0.5">{b.drivers?.plate || '—'}</p>
+                <div className="flex items-center gap-2">
+                  <Avatar userId={b.drivers?.user_id} initials={b.drivers?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'DR'} color={b.drivers?.color || 'var(--color-primary)'} size="sm" />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{b.drivers?.name || '—'}</p>
+                    <p className="text-xs text-sub font-mono mt-0.5">{b.drivers?.plate || '—'}</p>
+                  </div>
+                </div>
               </div>
             </div>
 

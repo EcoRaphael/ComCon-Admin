@@ -27,34 +27,31 @@ export default function AdminProfile() {
   const [pwForm, setPwForm] = useState({ next: '', confirm: '' })
 
   const [avatarUrl,       setAvatarUrl]       = useState(() => {
-    try { return localStorage.getItem('cc-avatar') || null } catch { return null }
+    if (!profile?.id) return null
+    try { return localStorage.getItem(`cc-avatar-${profile.id}`) || null } catch { return null }
   })
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
-  // On mount — check Supabase Storage for existing avatar
-  // Covers the case where image was uploaded directly in Supabase dashboard
+  // On mount — check Supabase Storage for this admin's own avatar.
+  // Path is scoped per-admin (avatar-{profile.id}.*) — a single shared
+  // filename would mean every admin account overwrites everyone else's
+  // photo, which is what this used to do.
   useEffect(() => {
-    // On every mount — always fetch fresh URL from Supabase so latest upload shows
-    // Try app-uploaded filename first, then fall back to manually uploaded file
-    const tryFiles = ['admin-avatar.jpg', '20260224_075841_261.jpg']
+    if (!profile?.id) return
     const load = async () => {
-      for (const filename of tryFiles) {
-        const { data } = supabase.storage.from('avatar').getPublicUrl(filename)
-        if (!data?.publicUrl) continue
-        // Add timestamp to bust any browser cache
-        const url = data.publicUrl + '?t=' + Date.now()
-        try {
-          const res = await fetch(url, { method: 'HEAD' })
-          if (res.ok) {
-            setAvatarUrl(url)
-            try { localStorage.setItem('cc-avatar', url) } catch {}
-            return
-          }
-        } catch {}
-      }
+      const { data } = supabase.storage.from('avatar').getPublicUrl(`avatar-${profile.id}.jpg`)
+      if (!data?.publicUrl) return
+      const url = data.publicUrl + '?t=' + Date.now()
+      try {
+        const res = await fetch(url, { method: 'HEAD' })
+        if (res.ok) {
+          setAvatarUrl(url)
+          try { localStorage.setItem(`cc-avatar-${profile.id}`, url) } catch {}
+        }
+      } catch {}
     }
     load()
-  }, [])
+  }, [profile?.id])
 
   const initials = profile?.name
     ?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AD'
@@ -68,9 +65,14 @@ export default function AdminProfile() {
 
     setUploadingAvatar(true)
     try {
-      // Upload to Supabase Storage bucket 'avatars'
-      const ext  = file.name.split('.').pop().toLowerCase()
-      const path = 'admin-avatar.jpg'  // fixed name — always overwrites same file
+      // Upload to Supabase Storage bucket 'avatar', scoped to this admin's
+      // own id so different admin accounts don't overwrite each other.
+      // Filename extension is fixed regardless of the uploaded file's real
+      // type — contentType is set correctly below, and the browser renders
+      // based on that header, not the URL's extension — so this keeps
+      // exactly one file per admin instead of accumulating one per
+      // extension they've ever uploaded.
+      const path = `avatar-${profile.id}.jpg`
 
       const { error: uploadError } = await supabase.storage
         .from('avatar')
@@ -85,10 +87,11 @@ export default function AdminProfile() {
 
       const url = data.publicUrl + '?t=' + Date.now()
 
-      // Save to state + localStorage cache for instant display everywhere
+      // Save to state + localStorage cache (scoped per-admin) for instant
+      // display everywhere.
       setAvatarUrl(url)
       try {
-        localStorage.setItem('cc-avatar', url)
+        localStorage.setItem(`cc-avatar-${profile.id}`, url)
         // Notify Sidebar + Topbar to refresh
         window.dispatchEvent(new Event('storage'))
       } catch {}
@@ -165,17 +168,7 @@ export default function AdminProfile() {
                   src={avatarUrl}
                   alt="Profile"
                   className="w-full h-full object-cover"
-                  onError={() => {
-                    // Try original filename if current URL fails
-                    const { data } = supabase.storage.from('avatar').getPublicUrl('20260224_075841_261.jpg')
-                    if (data?.publicUrl && avatarUrl !== data.publicUrl) {
-                      const url = data.publicUrl + '?t=' + Date.now()
-                      setAvatarUrl(url)
-                      try { localStorage.setItem('cc-avatar', url) } catch {}
-                    } else {
-                      setAvatarUrl(null)
-                    }
-                  }}
+                  onError={() => setAvatarUrl(null)}
                 />
               : <span className="text-white font-black text-2xl">{initials}</span>
             }

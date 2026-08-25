@@ -265,7 +265,7 @@ export default function Dashboard() {
                 .slice(0, 4)
                 .map(d => (
                   <div key={d.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                    <Avatar initials={initials(d.name)} color={d.color || 'var(--color-primary)'} />
+                    <Avatar userId={d.user_id} initials={initials(d.name)} color={d.color || 'var(--color-primary)'} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-sm truncate">{d.name}</p>
