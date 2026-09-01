@@ -101,6 +101,28 @@ export default function Schedules() {
     setLoading(false)
   }
 
+<<<<<<< main
+=======
+  // ── Auto-generate for verified drivers with no schedule yet ──────
+  async function handleAutoGenerate() {
+    setGenerating(true)
+    const { error, created, skipped, slotsAdded } = await generateSchedulesForVerifiedDrivers()
+    setGenerating(false)
+    if (error) {
+      toast('Failed: ' + error.message)
+      return
+    }
+    if (created === 0) {
+      toast(skipped > 0
+        ? `All ${skipped} verified driver(s) are already fully covered by the current template — nothing to add.`
+        : 'No verified drivers found yet.')
+      return
+    }
+    toast(`✅ Added ${slotsAdded} schedule slot(s) across ${created} driver(s)${skipped > 0 ? ` (${skipped} already fully covered)` : ''}`)
+    fetchSchedules()
+  }
+
+>>>>>>> local
   // ── Add new schedule ────────────────────────────────────────────
   async function handleSave(e) {
     e.preventDefault()
@@ -289,6 +311,17 @@ export default function Schedules() {
               <LayoutGrid size={16} /> Grid
             </button>
           </div>
+<<<<<<< main
+=======
+          <button
+            className="btn-ghost btn-sm flex items-center gap-1.5"
+            disabled={generating}
+            onClick={handleAutoGenerate}
+            title="Fill in any missing template days for every verified driver — including days you've since added to the template"
+          >
+            {generating ? <Spinner size={16} /> : <><Sparkles size={16} /> Auto-Generate Schedules</>}
+          </button>
+>>>>>>> local
           <button className="btn-primary btn-sm flex items-center gap-1.5" onClick={() => setShowForm(f => !f)}>
             {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> Add Schedule</>}
           </button>
