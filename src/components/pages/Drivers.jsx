@@ -55,7 +55,7 @@ export default function Drivers() {
   const [verifying, setVerifying] = useState(false)
   const [driverVehicle,  setDriverVehicle]  = useState(null)
   const [loadingVehicle, setLoadingVehicle] = useState(false)
-  const [documentUrls,   setDocumentUrls]   = useState({ license: null, or: null, cr: null })
+  const [documentUrls,   setDocumentUrls]   = useState({ license_front: null, license_back: null, or: null, cr: null })
   const [loadingDocs,    setLoadingDocs]    = useState(false)
   const [confirmDelete,  setConfirmDelete]  = useState(null)
   const [deleting,       setDeleting]       = useState(false)
@@ -87,7 +87,7 @@ export default function Drivers() {
       })
     } else {
       setDriverVehicle(null)
-      setDocumentUrls({ license: null, or: null, cr: null })
+      setDocumentUrls({ license_front: null, license_back: null, or: null, cr: null })
     }
   }, [viewDriver])
 
@@ -96,9 +96,10 @@ export default function Drivers() {
   async function fetchDriverDocuments(driver) {
     setLoadingDocs(true)
     const paths = {
-      license: driver.license_photo_path,
-      or:      driver.or_photo_path,
-      cr:      driver.cr_photo_path,
+      license_front: driver.license_photo_path,
+      license_back:  driver.license_back_photo_path,
+      or:            driver.or_photo_path,
+      cr:            driver.cr_photo_path,
     }
     const entries = await Promise.all(
       Object.entries(paths).map(async ([key, path]) => {
@@ -650,9 +651,10 @@ export default function Drivers() {
               ) : (
                 <div className="space-y-3">
                   {[
-                    { key: 'license', label: "Driver's License" },
-                    { key: 'or',      label: 'OR (Official Receipt)' },
-                    { key: 'cr',      label: 'CR (Certificate of Registration)' },
+                    { key: 'license_front', label: "Driver's License — Front" },
+                    { key: 'license_back',  label: "Driver's License — Back" },
+                    { key: 'or',            label: 'OR (Official Receipt)' },
+                    { key: 'cr',            label: 'CR (Certificate of Registration)' },
                   ].map(({ key, label }) => (
                     <div key={key} className="bg-surface rounded-xl p-3">
                       <p className="text-[10px] text-sub uppercase tracking-wider font-bold mb-2">{label}</p>
