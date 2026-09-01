@@ -20,7 +20,8 @@ import {
   Pause,
   AlertCircle,
   Edit3,
-  Save
+  Save,
+  Sparkles
 } from 'lucide-react'
 
 // IMPORTANT: the database only accepts abbreviated codes ('Mon','Tue',...).
@@ -67,7 +68,7 @@ const initials = (name) =>
   name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'DR'
 
 export default function Schedules() {
-  const { drivers } = useAdmin()
+  const { drivers, generateSchedulesForVerifiedDrivers } = useAdmin()
   const { toast } = useToastCtx()
 
   const [schedules, setSchedules] = useState([])
@@ -86,6 +87,7 @@ export default function Schedules() {
   const [editTarget, setEditTarget] = useState(null)   // schedule being edited
   const [editForm, setEditForm] = useState(null)   // edit form values
   const [updating, setUpdating] = useState(false)
+  const [generating, setGenerating] = useState(false)
 
   useEffect(() => { fetchSchedules() }, [])
 
@@ -99,6 +101,25 @@ export default function Schedules() {
     if (error) { toast('Failed to load schedules'); console.error(error) }
     else setSchedules(data || [])
     setLoading(false)
+  }
+
+  // ── Auto-generate for verified drivers with no schedule yet ──────
+  async function handleAutoGenerate() {
+    setGenerating(true)
+    const { error, created, skipped } = await generateSchedulesForVerifiedDrivers()
+    setGenerating(false)
+    if (error) {
+      toast('Failed: ' + error.message)
+      return
+    }
+    if (created === 0) {
+      toast(skipped > 0
+        ? `All ${skipped} verified driver(s) already have a schedule — nothing to generate.`
+        : 'No verified drivers found yet.')
+      return
+    }
+    toast(`✅ Generated schedules for ${created} driver(s)${skipped > 0 ? ` (${skipped} already had one)` : ''}`)
+    fetchSchedules()
   }
 
   // ── Add new schedule ────────────────────────────────────────────
@@ -191,6 +212,8 @@ export default function Schedules() {
     if (!error) {
       setSchedules(prev => prev.map(s => s.id === id ? { ...s, is_active: !current } : s))
       toast(!current ? 'Schedule activated' : 'Schedule paused')
+    } else {
+      toast('Failed to update schedule')
     }
   }
 
@@ -289,6 +312,14 @@ export default function Schedules() {
               <LayoutGrid size={16} /> Grid
             </button>
           </div>
+          <button
+            className="btn-ghost btn-sm flex items-center gap-1.5"
+            disabled={generating}
+            onClick={handleAutoGenerate}
+            title="Create a default schedule for every verified driver who doesn't have one yet"
+          >
+            {generating ? <Spinner size={16} /> : <><Sparkles size={16} /> Auto-Generate Schedules</>}
+          </button>
           <button className="btn-primary btn-sm flex items-center gap-1.5" onClick={() => setShowForm(f => !f)}>
             {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> Add Schedule</>}
           </button>

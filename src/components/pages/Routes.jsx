@@ -57,11 +57,15 @@ export default function Routes() {
       return
     }
     setSaving(true)
-    await addRoute(form)
+    const { error } = await addRoute(form)
+    setSaving(false)
+    if (error) {
+      toast('Failed to add route: ' + error.message)
+      return
+    }
     toast('Route added successfully')
     setModalOpen(false)
     setForm({ name: '', from: '', to: '', distance: '', vehicleTypes: [], status: 'active' })
-    setSaving(false)
   }
 
   const activeRoutes   = routes.filter(r => r.status === 'active')
@@ -122,7 +126,10 @@ export default function Routes() {
                     </td>
                     <td>
                       <button className="btn-ghost btn-sm flex items-center gap-1.5"
-                        onClick={() => { toggleRouteStatus(r.id); toast(`Route ${r.name} status updated`) }}>
+                        onClick={async () => {
+                          const { error } = await toggleRouteStatus(r.id)
+                          toast(error ? 'Failed: ' + error.message : `Route ${r.name} status updated`)
+                        }}>
                         {r.status === 'active' ? (
                           <><PowerOff size={14} /> Deactivate</>
                         ) : (

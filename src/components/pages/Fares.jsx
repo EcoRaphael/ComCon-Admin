@@ -50,19 +50,18 @@ export default function Fares() {
     }
     
     setUpdating(true)
-    try {
-      await updateFare(selectedType, {
-        base_fare: parseFloat(form.base_fare),
-        per_km: parseFloat(form.per_km),
-        peak_surcharge: parseFloat(form.peak_surcharge) || 0,
-      })
-      toast(`✅ ${selectedType} fare registry updated!`)
-      setForm({ base_fare: '', per_km: '', peak_surcharge: '', effective_date: '', order_no: '' })
-    } catch (err) {
-      toast('❌ Failed to update fare')
-    } finally {
-      setUpdating(false)
+    const { error } = await updateFare(selectedType, {
+      base_fare: parseFloat(form.base_fare),
+      per_km: parseFloat(form.per_km),
+      peak_surcharge: parseFloat(form.peak_surcharge) || 0,
+    })
+    setUpdating(false)
+    if (error) {
+      toast('❌ Failed to update fare: ' + error.message)
+      return
     }
+    toast(`✅ ${selectedType} fare registry updated!`)
+    setForm({ base_fare: '', per_km: '', peak_surcharge: '', effective_date: '', order_no: '' })
   }
 
   const handleCalculate = () => {

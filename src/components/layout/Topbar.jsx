@@ -132,7 +132,7 @@ export default function Topbar() {
           title="My Profile"
         >
           <div className="w-8 h-8 rounded-full bg-cta flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
-            {(() => { try { const a = localStorage.getItem('cc-avatar'); return a ? <img src={a} alt="" className="w-full h-full object-cover" /> : null } catch { return null } })()
+            {(() => { try { const a = profile?.id ? localStorage.getItem(`cc-avatar-${profile.id}`) : null; return a ? <img src={a} alt="" className="w-full h-full object-cover" /> : null } catch { return null } })()
               || (profile?.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() ?? 'AD')}
           </div>
           <span className="text-sm font-semibold text-navy dark:text-text-dark-primary hidden md:block">

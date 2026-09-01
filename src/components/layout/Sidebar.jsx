@@ -71,37 +71,37 @@ export default function Sidebar() {
     : 'AD'
 
   const [avatarUrl, setAvatarUrl] = useState(() => {
-    try { return localStorage.getItem('cc-avatar') || null } catch { return null }
+    if (!profile?.id) return null
+    try { return localStorage.getItem(`cc-avatar-${profile.id}`) || null } catch { return null }
   })
 
   useEffect(() => {
+    if (!profile?.id) return
+
     // Listen for upload events from AdminProfile page
     const handler = () => {
-      try { setAvatarUrl(localStorage.getItem('cc-avatar') || null) } catch {}
+      try { setAvatarUrl(localStorage.getItem(`cc-avatar-${profile.id}`) || null) } catch {}
     }
     window.addEventListener('storage', handler)
 
-    // Always fetch fresh from Supabase on mount
+    // Always fetch fresh from Supabase on mount — path is scoped to this
+    // admin's own id so different admin accounts don't share one avatar.
     const fetchAvatar = async () => {
-      const filenames = ['admin-avatar.jpg', '20260224_075841_261.jpg']
-      for (const filename of filenames) {
-        const { data } = supabase.storage.from('avatar').getPublicUrl(filename)
-        if (!data?.publicUrl) continue
-        try {
-          const res = await fetch(data.publicUrl, { method: 'HEAD' })
-          if (res.ok) {
-            const url = data.publicUrl + '?t=' + Date.now()
-            setAvatarUrl(url)
-            try { localStorage.setItem('cc-avatar', url) } catch {}
-            return
-          }
-        } catch {}
-      }
+      const { data } = supabase.storage.from('avatar').getPublicUrl(`avatar-${profile.id}.jpg`)
+      if (!data?.publicUrl) return
+      try {
+        const res = await fetch(data.publicUrl, { method: 'HEAD' })
+        if (res.ok) {
+          const url = data.publicUrl + '?t=' + Date.now()
+          setAvatarUrl(url)
+          try { localStorage.setItem(`cc-avatar-${profile.id}`, url) } catch {}
+        }
+      } catch {}
     }
     fetchAvatar()
 
     return () => window.removeEventListener('storage', handler)
-  }, [])
+  }, [profile?.id])
 
   return (
     <>
