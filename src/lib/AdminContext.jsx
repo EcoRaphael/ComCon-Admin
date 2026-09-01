@@ -5,6 +5,25 @@ import { useAuth } from '@/lib/AuthContext'
 
 const AdminContext = createContext(null)
 
+// Subscribes to postgres_changes for `table` and calls `refetch()` on any
+// insert/update/delete, once `ready`. Used for every table below so the
+// whole admin panel reflects changes live — a commuter booking, a driver
+// going online, a new signup, etc. — instead of only updating on the next
+// manual page refresh. Refetching via the same joined query (rather than
+// trying to hand-merge the raw payload) keeps related driver/customer
+// names and photos correct, matching how the driver app already does
+// this in DriverBookings.jsx.
+function useRealtimeSync(table, refetch, ready) {
+  useEffect(() => {
+    if (!ready) return
+    const channel = supabase
+      .channel(`admin_${table}_realtime`)
+      .on('postgres_changes', { event: '*', schema: 'public', table }, () => refetch())
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [ready, refetch, table])
+}
+
 export function AdminProvider({ children }) {
   const { loadingAuth, isLoggedIn } = useAuth()
   const [drivers,       setDrivers]       = useState([])
@@ -80,6 +99,102 @@ export function AdminProvider({ children }) {
     if (!isLoggedIn) { setLoading(false); return }
     fetchAll()
   }, [loadingAuth, isLoggedIn, fetchAll])
+
+  // ── REALTIME ──────────────────────────────────────────────
+  // Everything here was previously a one-time fetch on mount — nothing
+  // in the admin panel updated after that unless the admin manually
+  // refreshed. Each table gets its own dedicated refetch (matching its
+  // exact select+joins from fetchAll) plus a subscription via the shared
+  // useRealtimeSync hook above.
+  const ready = !loadingAuth && isLoggedIn
+
+  const fetchBookings = useCallback(async () => {
+    const { data } = await supabase
+      .from('bookings')
+      .select('*, users!customer_id(name,phone,email), drivers!driver_id(name,plate,vehicle_type,user_id,color)')
+      .order('created_at', { ascending: false })
+    setBookings(data || [])
+  }, [])
+  useRealtimeSync('bookings', fetchBookings, ready)
+
+  const fetchDrivers = useCallback(async () => {
+    const { data } = await supabase.from('drivers').select('*').order('created_at', { ascending: false })
+    setDrivers(data || [])
+  }, [])
+  useRealtimeSync('drivers', fetchDrivers, ready)
+
+  const fetchReports = useCallback(async () => {
+    const { data } = await supabase
+      .from('reports')
+      .select('*, users!customer_id(name), drivers!driver_id(name,plate,user_id,color)')
+      .order('created_at', { ascending: false })
+    setReports(data || [])
+  }, [])
+  useRealtimeSync('reports', fetchReports, ready)
+
+  const fetchRatings = useCallback(async () => {
+    const { data } = await supabase
+      .from('ratings')
+      .select('*, customer:users!customer_id(id, name, email), driver:drivers!driver_id(id, name, vehicle_type, plate, color, user_id)')
+      .order('created_at', { ascending: false })
+    setRatings(data || [])
+  }, [])
+  useRealtimeSync('ratings', fetchRatings, ready)
+
+  const fetchCustomers = useCallback(async () => {
+    const { data } = await supabase.from('users').select('*').eq('role', 'customer').order('created_at', { ascending: false })
+    setCustomers(data || [])
+  }, [])
+  // Customers live in the shared `users` table alongside drivers/admins,
+  // so this listens to the whole table — the fetch itself already
+  // filters to role='customer', so a driver/admin change just triggers a
+  // harmless refetch rather than incorrectly appearing in this list.
+  useRealtimeSync('users', fetchCustomers, ready)
+
+  const fetchRoutesTable = useCallback(async () => {
+    const { data } = await supabase.from('routes').select('*').order('created_at', { ascending: false })
+    setRoutes(data || [])
+  }, [])
+  useRealtimeSync('routes', fetchRoutesTable, ready)
+
+  const fetchVehicles = useCallback(async () => {
+    const { data } = await supabase
+      .from('vehicles')
+      .select('*, drivers!driver_id(name,route,status)')
+      .order('created_at', { ascending: false })
+    setVehicles(data || [])
+  }, [])
+  useRealtimeSync('vehicles', fetchVehicles, ready)
+
+  const fetchPayments = useCallback(async () => {
+    const { data } = await supabase
+      .from('payments')
+      .select('*, bookings!booking_id(pickup,dropoff,vehicle_type), drivers!driver_id(name,plate)')
+      .order('created_at', { ascending: false })
+    setPayments(data || [])
+  }, [])
+  useRealtimeSync('payments', fetchPayments, ready)
+
+  const fetchFareMatrix = useCallback(async () => {
+    const { data } = await supabase.from('fare_matrix').select('*').order('vehicle_type')
+    setFareMatrix(data || [])
+  }, [])
+  useRealtimeSync('fare_matrix', fetchFareMatrix, ready)
+
+  const fetchActivityLog = useCallback(async () => {
+    const { data } = await supabase
+      .from('activity_log')
+      .select('*, users!user_id(name)')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setActivityLog(data || [])
+  }, [])
+  useRealtimeSync('activity_log', fetchActivityLog, ready)
+
+  // notifications is intentionally NOT synced here — Notifications.jsx
+  // already manages its own independent realtime subscription with its
+  // own local state, and this context's `notifications`/`setNotifications`
+  // are unused everywhere else in the app.
 
   // ── DRIVERS ───────────────────────────────────────────────
   const toggleDriverStatus = useCallback(async (id) => {
