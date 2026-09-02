@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAdmin } from '@/lib/AdminContext'
 import { Card, CardHead } from '@/components/ui'
 
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, LayersControl, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 
 import 'leaflet/dist/leaflet.css'
@@ -133,10 +133,20 @@ export default function LiveMap() {
                   dragging={!L.Browser.mobile}
                   tap={!L.Browser.mobile}
                 >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
+                  <LayersControl position="topleft">
+                    <LayersControl.BaseLayer checked name="Street">
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                    </LayersControl.BaseLayer>
+                    <LayersControl.BaseLayer name="Satellite">
+                      <TileLayer
+                        attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                      />
+                    </LayersControl.BaseLayer>
+                  </LayersControl>
 
                   <MapController selectedPosition={selectedDriver ? positionsById[selectedDriver.id] : null} />
 
