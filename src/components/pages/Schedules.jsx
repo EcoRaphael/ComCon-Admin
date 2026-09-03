@@ -106,7 +106,7 @@ export default function Schedules() {
   // ── Auto-generate for verified drivers with no schedule yet ──────
   async function handleAutoGenerate() {
     setGenerating(true)
-    const { error, created, skipped } = await generateSchedulesForVerifiedDrivers()
+    const { error, created, skipped, slotsAdded } = await generateSchedulesForVerifiedDrivers()
     setGenerating(false)
     if (error) {
       toast('Failed: ' + error.message)
@@ -114,11 +114,11 @@ export default function Schedules() {
     }
     if (created === 0) {
       toast(skipped > 0
-        ? `All ${skipped} verified driver(s) already have a schedule — nothing to generate.`
+        ? `All ${skipped} verified driver(s) are already fully covered by the current template — nothing to add.`
         : 'No verified drivers found yet.')
       return
     }
-    toast(`✅ Generated schedules for ${created} driver(s)${skipped > 0 ? ` (${skipped} already had one)` : ''}`)
+    toast(`✅ Added ${slotsAdded} schedule slot(s) across ${created} driver(s)${skipped > 0 ? ` (${skipped} already fully covered)` : ''}`)
     fetchSchedules()
   }
 
@@ -316,7 +316,7 @@ export default function Schedules() {
             className="btn-ghost btn-sm flex items-center gap-1.5"
             disabled={generating}
             onClick={handleAutoGenerate}
-            title="Create a default schedule for every verified driver who doesn't have one yet"
+            title="Fill in any missing template days for every verified driver — including days you've since added to the template"
           >
             {generating ? <Spinner size={16} /> : <><Sparkles size={16} /> Auto-Generate Schedules</>}
           </button>
