@@ -212,8 +212,25 @@ export function AdminProvider({ children }) {
       return { error: { message: 'Set this driver\'s real plate number (from their License/OR/CR photos) before verifying.' } }
     }
     const { error } = await supabase.from('drivers').update({ verified: true }).eq('id', id)
-    if (!error) setDrivers(prev => prev.map(d => d.id === id ? { ...d, verified: true } : d))
-    return { error }
+    if (error) return { error }
+    setDrivers(prev => prev.map(d => d.id === id ? { ...d, verified: true } : d))
+
+    // Also confirm their email — with "Confirm email" required (needed
+    // for commuter OTP), an unconfirmed account can't sign in at all.
+    // This folds that confirmation into the same click as verification
+    // rather than requiring a separate manual step — see
+    // driver_registration_rls_fix.sql for the full explanation.
+    if (driver?.user_id) {
+      const { error: confirmError } = await supabase.rpc('admin_confirm_driver_email', {
+        p_driver_user_id: driver.user_id,
+      })
+      if (confirmError) {
+        console.error('[verifyDriver] failed to confirm driver email:', confirmError)
+        return { error: { message: 'Driver verified, but confirming their email failed — they may not be able to log in yet. (' + confirmError.message + ')' } }
+      }
+    }
+
+    return { error: null }
   }, [drivers])
 
   // Self-registered drivers (see LoginPage.jsx) don't submit a plate or
