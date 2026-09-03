@@ -212,8 +212,25 @@ export function AdminProvider({ children }) {
       return { error: { message: 'Set this driver\'s real plate number (from their License/OR/CR photos) before verifying.' } }
     }
     const { error } = await supabase.from('drivers').update({ verified: true }).eq('id', id)
-    if (!error) setDrivers(prev => prev.map(d => d.id === id ? { ...d, verified: true } : d))
-    return { error }
+    if (error) return { error }
+    setDrivers(prev => prev.map(d => d.id === id ? { ...d, verified: true } : d))
+
+    // Also confirm their email — with "Confirm email" required (needed
+    // for commuter OTP), an unconfirmed account can't sign in at all.
+    // This folds that confirmation into the same click as verification
+    // rather than requiring a separate manual step — see
+    // driver_registration_rls_fix.sql for the full explanation.
+    if (driver?.user_id) {
+      const { error: confirmError } = await supabase.rpc('admin_confirm_driver_email', {
+        p_driver_user_id: driver.user_id,
+      })
+      if (confirmError) {
+        console.error('[verifyDriver] failed to confirm driver email:', confirmError)
+        return { error: { message: 'Driver verified, but confirming their email failed — they may not be able to log in yet. (' + confirmError.message + ')' } }
+      }
+    }
+
+    return { error: null }
   }, [drivers])
 
   // Self-registered drivers (see LoginPage.jsx) don't submit a plate or
@@ -438,30 +455,39 @@ export function AdminProvider({ children }) {
       return { error: null, created: 0, skipped: 0 }
     }
 
-    // Which of these verified drivers already have ANY schedule row?
-    // Those are left untouched — this only fills in drivers with none.
+    // Fill in gaps per (driver, day) rather than skipping a driver
+    // entirely just because they already have SOME schedule. Without
+    // this, updating the template (e.g. adding Sunday) after drivers
+    // already had Mon–Sat generated would never actually add the new
+    // day for them — they'd be silently skipped forever.
     const { data: existing, error: existingError } = await supabase
       .from('schedules')
-      .select('driver_id')
+      .select('driver_id, day_of_week')
       .in('driver_id', verifiedDrivers.map(d => d.id))
     if (existingError) return { error: existingError }
 
-    const alreadyScheduled = new Set((existing || []).map(s => s.driver_id))
-    const toSchedule = verifiedDrivers.filter(d => !alreadyScheduled.has(d.id))
+    const existingSet = new Set((existing || []).map(s => `${s.driver_id}::${s.day_of_week}`))
 
-    if (toSchedule.length === 0) {
+    const rows = []
+    for (const d of verifiedDrivers) {
+      for (const day of template.days) {
+        if (!existingSet.has(`${d.id}::${day}`)) {
+          rows.push({
+            driver_id: d.id,
+            day_of_week: day,
+            start_time: template.start_time,
+            end_time: template.end_time,
+            is_active: true,
+          })
+        }
+      }
+    }
+
+    if (rows.length === 0) {
       return { error: null, created: 0, skipped: verifiedDrivers.length }
     }
 
-    const rows = toSchedule.flatMap(d =>
-      template.days.map(day => ({
-        driver_id: d.id,
-        day_of_week: day,
-        start_time: template.start_time,
-        end_time: template.end_time,
-        is_active: true,
-      }))
-    )
+    const driversAffected = new Set(rows.map(r => r.driver_id)).size
 
     const { data: inserted, error: insertError } = await supabase
       .from('schedules')
@@ -469,7 +495,13 @@ export function AdminProvider({ children }) {
       .select('*, drivers(name, vehicle_type, plate, color, status, route)')
     if (insertError) return { error: insertError }
 
-    return { error: null, created: toSchedule.length, skipped: verifiedDrivers.length - toSchedule.length, inserted }
+    return {
+      error: null,
+      created: driversAffected,
+      skipped: verifiedDrivers.length - driversAffected,
+      slotsAdded: rows.length,
+      inserted,
+    }
   }, [drivers, getScheduleTemplate])
 
   // ── STATS ─────────────────────────────────────────────────
