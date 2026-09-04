@@ -6,7 +6,9 @@ import { useToastCtx } from '@/lib/ToastContext'
 import { Card, CardHead, DataTable, StatCard } from '@/components/ui'
 import {
   FileSpreadsheet, History, Users, Receipt,
-  Search, Calendar, ArrowRight, Download, FileText
+  Search, Calendar, ArrowRight, Download, FileText,
+  ShieldCheck, ShieldAlert, ShieldQuestion, AlertTriangle,
+  CheckCircle2, Clock,
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 
@@ -131,8 +133,8 @@ function generateBookingPDF(booking) {
   win.document.close()
 }
 
-// ── CSV export (unchanged) ───────────────────────────────────────────────────
-function exportCSV(type, bookings, payments, toast) {
+// ── CSV export (unchanged, plus compliance + complaints) ────────────────────
+function exportCSV(type, bookings, payments, toast, drivers, reports) {
   let csv = ''
   const filename = `commuterconnect-${type}-${new Date().toISOString().split('T')[0]}.csv`
 
@@ -145,6 +147,17 @@ function exportCSV(type, bookings, payments, toast) {
     csv = 'Commuter,Driver,Amount,Method,Status,Date\n'
     csv += payments.map(p =>
       `"${p.users?.name || ''}","${p.drivers?.name || ''}","${p.amount}","${p.method}","${p.status}","${new Date(p.created_at).toLocaleDateString('en-PH')}"`
+    ).join('\n')
+  } else if (type === 'compliance') {
+    csv = 'Driver,Plate,Vehicle Type,Verified,License Uploaded,OR Uploaded,CR Uploaded,Status,Registered\n'
+    csv += drivers.map(d => {
+      const plateReady = d.plate && !d.plate.startsWith('PENDING-')
+      return `"${d.name}","${plateReady ? d.plate : 'Pending'}","${d.vehicle_type}","${d.verified ? 'Yes' : 'No'}","${d.license_photo_path ? 'Yes' : 'No'}","${d.or_photo_path ? 'Yes' : 'No'}","${d.cr_photo_path ? 'Yes' : 'No'}","${d.status}","${new Date(d.created_at).toLocaleDateString('en-PH')}"`
+    }).join('\n')
+  } else if (type === 'complaints') {
+    csv = 'Filed By,Against Driver,Issue Type,Severity,Status,Description,Date\n'
+    csv += reports.map(r =>
+      `"${r.customer?.name || r.users?.name || ''}","${r.driver?.name || r.drivers?.name || ''}","${r.issue_type}","${r.severity}","${r.status}","${(r.description || '').replace(/"/g, '""')}","${new Date(r.created_at).toLocaleDateString('en-PH')}"`
     ).join('\n')
   } else {
     csv = 'Commuter,Driver,Pickup,Dropoff,Vehicle,Fare,Status,Date\n'
@@ -164,7 +177,7 @@ function exportCSV(type, bookings, payments, toast) {
 }
 
 export default function Records() {
-  const { bookings, payments, stats, loading } = useAdmin()
+  const { bookings, payments, drivers, reports, stats, loading } = useAdmin()
   const { toast } = useToastCtx()
   const [search,     setSearch]     = useState('')
   const [dateFilter, setDateFilter] = useState('')
@@ -180,6 +193,31 @@ export default function Records() {
     const matchesDate = !dateFilter || b.created_at?.startsWith(dateFilter)
     return matchesSearch && matchesDate
   }), [bookings, search, dateFilter])
+
+  // ── Compliance Report ──────────────────────────────────────────
+  const compliance = useMemo(() => {
+    const verified   = drivers.filter(d => d.verified)
+    const pending     = drivers.filter(d => !d.verified)
+    const missingDocs = drivers.filter(d => !d.license_photo_path || !d.or_photo_path || !d.cr_photo_path)
+    const plateReady  = (d) => d.plate && !d.plate.startsWith('PENDING-')
+    return { verified, pending, missingDocs, plateReady }
+  }, [drivers])
+
+  // ── Complaint & Reports Summary ─────────────────────────────────
+  const complaintSummary = useMemo(() => {
+    const pending  = reports.filter(r => r.status === 'pending')
+    const resolved = reports.filter(r => r.status === 'resolved')
+    const highSeverity = reports.filter(r => r.severity === 'High')
+
+    const byType = {}
+    reports.forEach(r => {
+      const key = r.issue_type || 'Uncategorized'
+      byType[key] = (byType[key] || 0) + 1
+    })
+    const byTypeSorted = Object.entries(byType).sort((a, b) => b[1] - a[1])
+
+    return { pending, resolved, highSeverity, byTypeSorted }
+  }, [reports])
 
   return (
     <div className="space-y-6 page-enter">
@@ -214,13 +252,156 @@ export default function Records() {
                 </div>
                 <button
                   className="btn-primary btn-sm w-full py-2 flex items-center justify-center gap-2"
-                  onClick={() => exportCSV(item.type, bookings, payments, toast)}
+                  onClick={() => exportCSV(item.type, bookings, payments, toast, drivers, reports)}
                 >
                   <Download size={14} /> Export CSV
                 </button>
               </div>
             ))}
           </div>
+        </div>
+      </Card>
+
+      {/* Compliance Report */}
+      <Card>
+        <CardHead
+          title="Driver Compliance Report"
+          subtitle="Verification and documentation status — regulatory oversight snapshot"
+          action={
+            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('compliance', bookings, payments, toast, drivers, reports)}>
+              <Download size={14} /> Export CSV
+            </button>
+          }
+        />
+        <div className="card-body">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+            <div className="bg-green-light rounded-xl p-4 flex items-center gap-3">
+              <ShieldCheck className="text-green" size={22} />
+              <div>
+                <p className="text-2xl font-black text-navy">{compliance.verified.length}</p>
+                <p className="text-[11px] text-sub font-semibold">Verified Drivers</p>
+              </div>
+            </div>
+            <div className="bg-amber-50 rounded-xl p-4 flex items-center gap-3">
+              <ShieldQuestion className="text-amber-600" size={22} />
+              <div>
+                <p className="text-2xl font-black text-navy">{compliance.pending.length}</p>
+                <p className="text-[11px] text-sub font-semibold">Pending Verification</p>
+              </div>
+            </div>
+            <div className="bg-red-50 rounded-xl p-4 flex items-center gap-3">
+              <ShieldAlert className="text-red-600" size={22} />
+              <div>
+                <p className="text-2xl font-black text-navy">{compliance.missingDocs.length}</p>
+                <p className="text-[11px] text-sub font-semibold">Missing Documents</p>
+              </div>
+            </div>
+          </div>
+
+          {drivers.length === 0 ? (
+            <p className="text-sub text-sm text-center py-6">No drivers registered yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <DataTable>
+                <thead>
+                  <tr>
+                    <th>Driver</th>
+                    <th>Plate</th>
+                    <th>Vehicle</th>
+                    <th>License</th>
+                    <th>OR</th>
+                    <th>CR</th>
+                    <th>Verified</th>
+                    <th>Registered</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {drivers.map(d => (
+                    <tr key={d.id} className="hover:bg-surface/50 transition-colors">
+                      <td className="font-bold text-navy py-3">{d.name}</td>
+                      <td className="font-mono text-xs">
+                        {compliance.plateReady(d) ? d.plate : <span className="text-amber-600 font-semibold">Pending</span>}
+                      </td>
+                      <td className="text-xs">{d.vehicle_type}</td>
+                      <td>{d.license_photo_path ? <CheckCircle2 size={14} className="text-green" /> : <span className="text-red-500 text-[10px] font-bold">Missing</span>}</td>
+                      <td>{d.or_photo_path ? <CheckCircle2 size={14} className="text-green" /> : <span className="text-red-500 text-[10px] font-bold">Missing</span>}</td>
+                      <td>{d.cr_photo_path ? <CheckCircle2 size={14} className="text-green" /> : <span className="text-red-500 text-[10px] font-bold">Missing</span>}</td>
+                      <td>
+                        <div className={`badge ${d.verified ? 'badge-green' : 'badge-amber'}`}>
+                          {d.verified ? 'Verified' : 'Pending'}
+                        </div>
+                      </td>
+                      <td className="text-[11px] text-sub font-mono">
+                        {new Date(d.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </DataTable>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Complaint & Reports Summary */}
+      <Card>
+        <CardHead
+          title="Complaint & Reports Summary"
+          subtitle="Filed reports by category, severity, and resolution status"
+          action={
+            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('complaints', bookings, payments, toast, drivers, reports)}>
+              <Download size={14} /> Export CSV
+            </button>
+          }
+        />
+        <div className="card-body">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+            <div className="bg-amber-50 rounded-xl p-4 flex items-center gap-3">
+              <Clock className="text-amber-600" size={22} />
+              <div>
+                <p className="text-2xl font-black text-navy">{complaintSummary.pending.length}</p>
+                <p className="text-[11px] text-sub font-semibold">Pending Reports</p>
+              </div>
+            </div>
+            <div className="bg-green-light rounded-xl p-4 flex items-center gap-3">
+              <CheckCircle2 className="text-green" size={22} />
+              <div>
+                <p className="text-2xl font-black text-navy">{complaintSummary.resolved.length}</p>
+                <p className="text-[11px] text-sub font-semibold">Resolved</p>
+              </div>
+            </div>
+            <div className="bg-red-50 rounded-xl p-4 flex items-center gap-3">
+              <AlertTriangle className="text-red-600" size={22} />
+              <div>
+                <p className="text-2xl font-black text-navy">{complaintSummary.highSeverity.length}</p>
+                <p className="text-[11px] text-sub font-semibold">High Severity</p>
+              </div>
+            </div>
+          </div>
+
+          {complaintSummary.byTypeSorted.length > 0 ? (
+            <div>
+              <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-2">By Issue Type</p>
+              <div className="space-y-2">
+                {complaintSummary.byTypeSorted.map(([type, count]) => {
+                  const pct = Math.round((count / reports.length) * 100)
+                  return (
+                    <div key={type}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-semibold text-navy">{type}</span>
+                        <span className="text-sub">{count} ({pct}%)</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden">
+                        <div className="h-full bg-cta rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sub text-sm text-center py-6">No reports filed yet.</p>
+          )}
         </div>
       </Card>
 
@@ -250,7 +431,7 @@ export default function Records() {
                   onChange={e => setDateFilter(e.target.value)}
                 />
               </div>
-              <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('all', bookings, payments, toast)}>
+              <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('all', bookings, payments, toast, drivers, reports)}>
                 <Download size={14} /> Export All
               </button>
             </div>
