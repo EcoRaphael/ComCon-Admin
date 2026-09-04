@@ -8,7 +8,7 @@ import {
   FileSpreadsheet, History, Users, Receipt,
   Search, Calendar, ArrowRight, Download, FileText,
   ShieldCheck, ShieldAlert, ShieldQuestion, AlertTriangle,
-  CheckCircle2, Clock,
+  CheckCircle2, Clock, Award, TrendingDown, Wallet, Trophy,
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 
@@ -27,7 +27,7 @@ function generateBookingPDF(booking) {
     <html>
     <head>
       <meta charset="utf-8" />
-      <title>Booking Confirmation — ${String(b.id).slice(0,8).toUpperCase()}</title>
+      <title>Booking Confirmation — ${String(b.id).slice(0, 8).toUpperCase()}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #111; padding: 40px; max-width: 600px; margin: 0 auto; }
@@ -66,7 +66,7 @@ function generateBookingPDF(booking) {
         <div>
           <div class="brand">Commuter<span>Connect</span></div>
           <div class="ref">Booking Confirmation Receipt</div>
-          <div class="ref">Ref No: ${String(b.id).slice(0,8).toUpperCase()}</div>
+          <div class="ref">Ref No: ${String(b.id).slice(0, 8).toUpperCase()}</div>
         </div>
         <div style="text-align:right">
           <span class="badge badge-${b.status}">${b.status}</span>
@@ -134,7 +134,7 @@ function generateBookingPDF(booking) {
 }
 
 // ── CSV export (unchanged, plus compliance + complaints) ────────────────────
-function exportCSV(type, bookings, payments, toast, drivers, reports) {
+function exportCSV(type, bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings) {
   let csv = ''
   const filename = `commuterconnect-${type}-${new Date().toISOString().split('T')[0]}.csv`
 
@@ -159,6 +159,16 @@ function exportCSV(type, bookings, payments, toast, drivers, reports) {
     csv += reports.map(r =>
       `"${r.customer?.name || r.users?.name || ''}","${r.driver?.name || r.drivers?.name || ''}","${r.issue_type}","${r.severity}","${r.status}","${(r.description || '').replace(/"/g, '""')}","${new Date(r.created_at).toLocaleDateString('en-PH')}"`
     ).join('\n')
+  } else if (type === 'performance') {
+    csv = 'Driver,Plate,Vehicle Type,Completed Trips,Cancelled Trips,Cancellation Rate,Avg Rating,Rating Count\n'
+    csv += driverPerformance.map(d =>
+      `"${d.name}","${d.plate}","${d.vehicleType}","${d.completedTrips}","${d.cancelledTrips}","${d.cancellationRate}%","${d.avgRating.toFixed(1)}","${d.ratingCount}"`
+    ).join('\n')
+  } else if (type === 'earnings') {
+    csv = 'Driver,Plate,Vehicle Type,Total Earnings,Completed Payments\n'
+    csv += driverEarnings.map(d =>
+      `"${d.name}","${d.plate}","${d.vehicleType}","${d.totalEarnings.toFixed(2)}","${d.paymentCount}"`
+    ).join('\n')
   } else {
     csv = 'Commuter,Driver,Pickup,Dropoff,Vehicle,Fare,Status,Date\n'
     csv += bookings.map(b =>
@@ -167,9 +177,9 @@ function exportCSV(type, bookings, payments, toast, drivers, reports) {
   }
 
   const blob = new Blob([csv], { type: 'text/csv' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
@@ -177,9 +187,9 @@ function exportCSV(type, bookings, payments, toast, drivers, reports) {
 }
 
 export default function Records() {
-  const { bookings, payments, drivers, reports, stats, loading } = useAdmin()
+  const { bookings, payments, drivers, reports, ratings, stats, loading } = useAdmin()
   const { toast } = useToastCtx()
-  const [search,     setSearch]     = useState('')
+  const [search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('')
 
   const completed = bookings.filter(b => b.status === 'completed')
@@ -196,16 +206,16 @@ export default function Records() {
 
   // ── Compliance Report ──────────────────────────────────────────
   const compliance = useMemo(() => {
-    const verified   = drivers.filter(d => d.verified)
-    const pending     = drivers.filter(d => !d.verified)
+    const verified = drivers.filter(d => d.verified)
+    const pending = drivers.filter(d => !d.verified)
     const missingDocs = drivers.filter(d => !d.license_photo_path || !d.or_photo_path || !d.cr_photo_path)
-    const plateReady  = (d) => d.plate && !d.plate.startsWith('PENDING-')
+    const plateReady = (d) => d.plate && !d.plate.startsWith('PENDING-')
     return { verified, pending, missingDocs, plateReady }
   }, [drivers])
 
   // ── Complaint & Reports Summary ─────────────────────────────────
   const complaintSummary = useMemo(() => {
-    const pending  = reports.filter(r => r.status === 'pending')
+    const pending = reports.filter(r => r.status === 'pending')
     const resolved = reports.filter(r => r.status === 'resolved')
     const highSeverity = reports.filter(r => r.severity === 'High')
 
@@ -219,14 +229,67 @@ export default function Records() {
     return { pending, resolved, highSeverity, byTypeSorted }
   }, [reports])
 
+  // ── Driver Performance Report ────────────────────────────────────
+  const driverPerformance = useMemo(() => {
+    return drivers.map(d => {
+      const driverBookings = bookings.filter(b => b.driver_id === d.id)
+      const completedTrips = driverBookings.filter(b => b.status === 'completed').length
+      const cancelledTrips = driverBookings.filter(b => b.status === 'cancelled').length
+      const totalTrips = driverBookings.length
+      const cancellationRate = totalTrips > 0 ? Math.round((cancelledTrips / totalTrips) * 100) : 0
+      // Computed fresh from the ratings table rather than trusting
+      // drivers.rating — that stored field isn't guaranteed to stay in
+      // sync, so this matches exactly what commuters actually rated them.
+      const driverRatings = ratings.filter(r => r.driver_id === d.id)
+      const avgRating = driverRatings.length > 0
+        ? driverRatings.reduce((s, r) => s + Number(r.stars || 0), 0) / driverRatings.length
+        : 0
+      return {
+        id: d.id, name: d.name, plate: d.plate, vehicleType: d.vehicle_type,
+        completedTrips, cancelledTrips, totalTrips, cancellationRate,
+        avgRating, ratingCount: driverRatings.length,
+      }
+    }).sort((a, b) => b.completedTrips - a.completedTrips)
+  }, [drivers, bookings, ratings])
+
+  const performanceHighlights = useMemo(() => {
+    const withTrips = driverPerformance.filter(d => d.totalTrips > 0)
+    const topRated = [...withTrips].sort((a, b) => b.avgRating - a.avgRating)[0]
+    const mostTrips = driverPerformance[0] // already sorted by completedTrips
+    const worstCancellation = [...withTrips].sort((a, b) => b.cancellationRate - a.cancellationRate)[0]
+    return { topRated, mostTrips, worstCancellation }
+  }, [driverPerformance])
+
+  // ── Driver Earnings Report ───────────────────────────────────────
+  // All-time totals, matching the compliance/complaint reports above —
+  // a date-range filter would be a reasonable future enhancement, but
+  // this keeps scope consistent with what's already here.
+  const driverEarnings = useMemo(() => {
+    return drivers.map(d => {
+      const driverPayments = payments.filter(p => p.driver_id === d.id && p.status === 'completed')
+      const totalEarnings = driverPayments.reduce((s, p) => s + Number(p.amount || 0), 0)
+      return {
+        id: d.id, name: d.name, plate: d.plate, vehicleType: d.vehicle_type,
+        totalEarnings, paymentCount: driverPayments.length,
+      }
+    }).sort((a, b) => b.totalEarnings - a.totalEarnings)
+  }, [drivers, payments])
+
+  const earningsTotals = useMemo(() => {
+    const totalDistributed = driverEarnings.reduce((s, d) => s + d.totalEarnings, 0)
+    const activeEarners = driverEarnings.filter(d => d.totalEarnings > 0).length
+    const avgPerDriver = activeEarners > 0 ? totalDistributed / activeEarners : 0
+    return { totalDistributed, activeEarners, avgPerDriver }
+  }, [driverEarnings])
+
   return (
     <div className="space-y-6 page-enter">
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<History       size={20} className="text-green"      />} iconBg="bg-green-light" value={completed.length}                label="Completed Rides"   />
-        <StatCard icon={<Receipt       size={20} className="text-blue-600"  />} iconBg="bg-blue-50"    value={`₱${totalFare.toLocaleString()}`} label="Confirmed Fares"   />
-        <StatCard icon={<FileSpreadsheet size={20} className="text-amber-600"/>} iconBg="bg-amber-50"   value={stats.totalBookings}              label="Total Records"     />
-        <StatCard icon={<Users         size={20} className="text-purple-600"/>} iconBg="bg-purple-50"  value={stats.totalCustomers}             label="Commuter Records"  />
+        <StatCard icon={<History size={20} className="text-green" />} iconBg="bg-green-light" value={completed.length} label="Completed Rides" />
+        <StatCard icon={<Receipt size={20} className="text-blue-600" />} iconBg="bg-blue-50" value={`₱${totalFare.toLocaleString()}`} label="Confirmed Fares" />
+        <StatCard icon={<FileSpreadsheet size={20} className="text-amber-600" />} iconBg="bg-amber-50" value={stats.totalBookings} label="Total Records" />
+        <StatCard icon={<Users size={20} className="text-purple-600" />} iconBg="bg-purple-50" value={stats.totalCustomers} label="Commuter Records" />
       </div>
 
       {/* Export cards */}
@@ -239,8 +302,8 @@ export default function Records() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               { label: 'Booking Confirmations', desc: 'Detailed log of passenger assignments', type: 'bookings', icon: <Users size={16} /> },
-              { label: 'Fare Details Report',   desc: 'Financial records and payment methods', type: 'fares',    icon: <Receipt size={16} /> },
-              { label: 'Full Ride History',      desc: 'End-to-end trip data and timestamps',  type: 'rides',    icon: <History size={16} /> },
+              { label: 'Fare Details Report', desc: 'Financial records and payment methods', type: 'fares', icon: <Receipt size={16} /> },
+              { label: 'Full Ride History', desc: 'End-to-end trip data and timestamps', type: 'rides', icon: <History size={16} /> },
             ].map(item => (
               <div key={item.type} className="group hover:border-green transition-all bg-white rounded-xl p-5 border border-border flex flex-col justify-between">
                 <div>
@@ -252,7 +315,7 @@ export default function Records() {
                 </div>
                 <button
                   className="btn-primary btn-sm w-full py-2 flex items-center justify-center gap-2"
-                  onClick={() => exportCSV(item.type, bookings, payments, toast, drivers, reports)}
+                  onClick={() => exportCSV(item.type, bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}
                 >
                   <Download size={14} /> Export CSV
                 </button>
@@ -268,7 +331,7 @@ export default function Records() {
           title="Driver Compliance Report"
           subtitle="Verification and documentation status — regulatory oversight snapshot"
           action={
-            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('compliance', bookings, payments, toast, drivers, reports)}>
+            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('compliance', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
               <Download size={14} /> Export CSV
             </button>
           }
@@ -349,7 +412,7 @@ export default function Records() {
           title="Complaint & Reports Summary"
           subtitle="Filed reports by category, severity, and resolution status"
           action={
-            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('complaints', bookings, payments, toast, drivers, reports)}>
+            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('complaints', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
               <Download size={14} /> Export CSV
             </button>
           }
@@ -405,6 +468,150 @@ export default function Records() {
         </div>
       </Card>
 
+      {/* Driver Performance Report */}
+      <Card>
+        <CardHead
+          title="Driver Performance Report"
+          subtitle="Trip completion, cancellation rate, and ratings per driver"
+          action={
+            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('performance', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
+              <Download size={14} /> Export CSV
+            </button>
+          }
+        />
+        <div className="card-body">
+          {driverPerformance.every(d => d.totalTrips === 0) ? (
+            <p className="text-sub text-sm text-center py-6">No completed trips yet.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                <div className="bg-green-light rounded-xl p-4 flex items-center gap-3">
+                  <Award className="text-green flex-shrink-0" size={22} />
+                  <div className="min-w-0">
+                    <p className="font-black text-navy truncate">{performanceHighlights.topRated?.name || '—'}</p>
+                    <p className="text-[11px] text-sub font-semibold">Top Rated ({performanceHighlights.topRated?.avgRating.toFixed(1) || '0.0'}★)</p>
+                  </div>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-4 flex items-center gap-3">
+                  <Trophy className="text-blue-600 flex-shrink-0" size={22} />
+                  <div className="min-w-0">
+                    <p className="font-black text-navy truncate">{performanceHighlights.mostTrips?.name || '—'}</p>
+                    <p className="text-[11px] text-sub font-semibold">Most Trips ({performanceHighlights.mostTrips?.completedTrips || 0})</p>
+                  </div>
+                </div>
+                <div className="bg-red-50 rounded-xl p-4 flex items-center gap-3">
+                  <TrendingDown className="text-red-600 flex-shrink-0" size={22} />
+                  <div className="min-w-0">
+                    <p className="font-black text-navy truncate">{performanceHighlights.worstCancellation?.name || '—'}</p>
+                    <p className="text-[11px] text-sub font-semibold">Highest Cancellation ({performanceHighlights.worstCancellation?.cancellationRate || 0}%)</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <DataTable>
+                  <thead>
+                    <tr>
+                      <th>Driver</th>
+                      <th>Vehicle</th>
+                      <th>Completed</th>
+                      <th>Cancelled</th>
+                      <th>Cancellation Rate</th>
+                      <th>Avg Rating</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {driverPerformance.map(d => (
+                      <tr key={d.id} className="hover:bg-surface/50 transition-colors">
+                        <td className="font-bold text-navy py-3">{d.name}</td>
+                        <td className="text-xs">{d.vehicleType} · {d.plate}</td>
+                        <td className="font-semibold text-green">{d.completedTrips}</td>
+                        <td className="text-red-500 font-semibold">{d.cancelledTrips}</td>
+                        <td>
+                          <span className={`text-xs font-bold ${d.cancellationRate > 20 ? 'text-red-600' : 'text-sub'}`}>
+                            {d.totalTrips > 0 ? `${d.cancellationRate}%` : '—'}
+                          </span>
+                        </td>
+                        <td>
+                          {d.ratingCount > 0 ? (
+                            <span className="text-amber-500 font-bold text-sm">★ {d.avgRating.toFixed(1)} <span className="text-sub font-normal text-[10px]">({d.ratingCount})</span></span>
+                          ) : <span className="text-sub text-xs">No ratings</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+              </div>
+            </>
+          )}
+        </div>
+      </Card>
+
+      {/* Driver Earnings Report */}
+      <Card>
+        <CardHead
+          title="Driver Earnings Report"
+          subtitle="Confirmed payments per driver, all-time"
+          action={
+            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('earnings', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
+              <Download size={14} /> Export CSV
+            </button>
+          }
+        />
+        <div className="card-body">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+            <div className="bg-green-light rounded-xl p-4 flex items-center gap-3">
+              <Wallet className="text-green" size={22} />
+              <div>
+                <p className="text-xl font-black text-navy">₱{earningsTotals.totalDistributed.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="text-[11px] text-sub font-semibold">Total Distributed</p>
+              </div>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-4 flex items-center gap-3">
+              <Users className="text-blue-600" size={22} />
+              <div>
+                <p className="text-xl font-black text-navy">{earningsTotals.activeEarners}</p>
+                <p className="text-[11px] text-sub font-semibold">Active Earners</p>
+              </div>
+            </div>
+            <div className="bg-purple-50 rounded-xl p-4 flex items-center gap-3">
+              <Receipt className="text-purple-600" size={22} />
+              <div>
+                <p className="text-xl font-black text-navy">₱{earningsTotals.avgPerDriver.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="text-[11px] text-sub font-semibold">Avg per Driver</p>
+              </div>
+            </div>
+          </div>
+
+          {earningsTotals.totalDistributed === 0 ? (
+            <p className="text-sub text-sm text-center py-6">No confirmed payments yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <DataTable>
+                <thead>
+                  <tr>
+                    <th>Driver</th>
+                    <th>Vehicle</th>
+                    <th>Completed Payments</th>
+                    <th>Total Earnings</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {driverEarnings.filter(d => d.totalEarnings > 0).map(d => (
+                    <tr key={d.id} className="hover:bg-surface/50 transition-colors">
+                      <td className="font-bold text-navy py-3">{d.name}</td>
+                      <td className="text-xs">{d.vehicleType} · {d.plate}</td>
+                      <td className="text-sm">{d.paymentCount}</td>
+                      <td className="font-black text-navy">₱{d.totalEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </DataTable>
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* Master log with PDF per row */}
       <Card>
         <CardHead
@@ -431,7 +638,7 @@ export default function Records() {
                   onChange={e => setDateFilter(e.target.value)}
                 />
               </div>
-              <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('all', bookings, payments, toast, drivers, reports)}>
+              <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('all', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
                 <Download size={14} /> Export All
               </button>
             </div>
@@ -485,11 +692,10 @@ export default function Records() {
                         {new Date(b.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td>
-                        <div className={`badge ${
-                          b.status === 'completed' ? 'badge-green' :
-                          b.status === 'ongoing'   ? 'badge-blue'  :
-                          b.status === 'cancelled' ? 'badge-red'   : 'badge-amber'
-                        }`}>
+                        <div className={`badge ${b.status === 'completed' ? 'badge-green' :
+                            b.status === 'ongoing' ? 'badge-blue' :
+                              b.status === 'cancelled' ? 'badge-red' : 'badge-amber'
+                          }`}>
                           {b.status}
                         </div>
                       </td>
