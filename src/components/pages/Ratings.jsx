@@ -1,9 +1,7 @@
 // src/components/pages/Ratings.jsx
 // Objective 4: organize ratings and commuter reviews
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAdmin } from '@/lib/AdminContext'
-import { useToastCtx } from '@/lib/ToastContext'
-import { supabase } from '@/lib/supabase/client'
 import { StatCard, Card, CardHead, DataTable, Avatar, Modal } from '@/components/ui'
 import { Star, ThumbsUp, ThumbsDown, Search, Filter, Eye } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
@@ -23,41 +21,18 @@ function StarDisplay({ value, size = 14 }) {
 }
 
 export default function Ratings() {
-  const { drivers, loading: adminLoading } = useAdmin()
-  const { toast } = useToastCtx()
+  // ratings now comes from the shared context — this page previously
+  // maintained its own completely independent fetch + realtime
+  // subscription for the exact same table, which was both redundant
+  // (two channels doing the same work) and a real source of confusion:
+  // a past bug fix edited AdminContext's ratings query without realizing
+  // this page never actually consumed it, since it had its own private
+  // copy of the data the whole time.
+  const { ratings, drivers, loading } = useAdmin()
 
-  const [ratings,    setRatings]    = useState([])
-  const [loading,    setLoading]    = useState(true)
   const [search,     setSearch]     = useState('')
   const [filterStar, setFilterStar] = useState('all')
   const [selected,   setSelected]   = useState(null)
-
-  useEffect(() => {
-    fetchRatings()
-    // Realtime: re-fetch whenever a new rating is inserted by commuter app
-    const channel = supabase
-      .channel('ratings-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ratings' }, () => {
-        fetchRatings()
-      })
-      .subscribe()
-    return () => supabase.removeChannel(channel)
-  }, [])
-
-  async function fetchRatings() {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('ratings')
-      .select(`
-      *,
-      customer:users!ratings_customer_id_fkey ( id, name, email ),
-      driver:drivers!ratings_driver_id_fkey   ( id, name, vehicle_type, plate, color, user_id )
-    `)
-      .order('created_at', { ascending: false })
-    if (error) { toast('Failed to load ratings'); console.error(error) }
-    else setRatings(data || [])
-    setLoading(false)
-  }
 
   const filtered = ratings.filter(r => {
     const matchStar = filterStar === 'all' ? true : Math.round(r.stars) === Number(filterStar)
@@ -143,7 +118,7 @@ export default function Ratings() {
         </div>
 
         <div className="card-body-np">
-          {loading || adminLoading ? (
+          {loading ? (
             <div className="flex justify-center items-center h-40">
               <Spinner size={32} />
             </div>
