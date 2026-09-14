@@ -57,6 +57,7 @@ export default function Notifications() {
   const [search, setSearch] = useState('')
   const [sending, setSending] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [markingAll, setMarkingAll] = useState(false)
   const [form, setForm] = useState({ title: '', message: '', type: 'system', target: 'all' })
 
   // Tracks the title+message of a broadcast this admin just sent, so the
@@ -168,6 +169,20 @@ export default function Notifications() {
     if (!error) setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
   }
 
+  async function handleMarkAllRead() {
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
+    if (unreadIds.length === 0) return
+    setMarkingAll(true)
+    const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds)
+    if (!error) {
+      setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, is_read: true } : n))
+      toast(`Marked ${unreadIds.length} notification(s) as read`)
+    } else {
+      toast('Failed to mark all as read: ' + error.message)
+    }
+    setMarkingAll(false)
+  }
+
   const filtered = useMemo(() => notifications.filter(n => {
     const matchFilter = filter === 'all' ? true : filter === 'unread' ? !n.is_read : n.type === filter
     const matchSearch = search === '' || 
@@ -260,7 +275,7 @@ export default function Notifications() {
               onChange={e => setSearch(e.target.value)} 
             />
           </div>
-          <div className="flex gap-1 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+          <div className="flex gap-1 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 items-center">
             {['all', 'unread', 'alert', 'booking', 'report'].map(f => (
               <button 
                 key={f} 
@@ -272,6 +287,16 @@ export default function Notifications() {
                 {f}
               </button>
             ))}
+            {stats.unread > 0 && (
+              <button
+                onClick={handleMarkAllRead}
+                disabled={markingAll}
+                className="ml-2 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap text-green border border-green/30 hover:bg-green-light transition-all disabled:opacity-50"
+              >
+                <CheckCheck size={13} />
+                {markingAll ? 'Marking...' : `Mark all read (${stats.unread})`}
+              </button>
+            )}
           </div>
         </div>
 
