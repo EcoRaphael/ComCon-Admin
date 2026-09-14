@@ -100,6 +100,14 @@ export default function Notifications() {
         setNotifications(prev => [payload.new, ...prev].slice(0, 200))
         toast(`🔔 New activity: ${payload.new.title}`)
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload) => {
+        // Keeps read/unread status in sync across every open session —
+        // without this, marking something read (individually or via
+        // "Mark all read") in one tab, or from a second admin account
+        // viewing this same page, wouldn't show up anywhere else until a
+        // manual refresh.
+        setNotifications(prev => prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n))
+      })
       .subscribe()
 
     return () => {
