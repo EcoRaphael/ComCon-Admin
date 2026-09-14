@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  LineChart, Line, CartesianGrid,
+  LineChart, Line, CartesianGrid, Cell,
 } from 'recharts'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -60,6 +60,31 @@ export default function Analytics() {
       color: VEHICLE_COLORS[t]
     }))
   }, [bookings])
+
+  // Peak Hours Analysis — groups all-time bookings by hour of day
+  // (0-23) rather than by date, to show WHEN during the day demand is
+  // highest, independent of which specific day it fell on. Same
+  // all-time-snapshot approach as the other reports in Records.jsx,
+  // rather than bounding to a rolling window, for consistency.
+  const hourlyData = useMemo(() => {
+    const counts = Array.from({ length: 24 }, () => 0)
+    bookings.forEach(b => {
+      if (!b.created_at) return
+      const hour = new Date(b.created_at).getHours()
+      counts[hour]++
+    })
+    const formatHour = (h) => {
+      if (h === 0) return '12AM'
+      if (h === 12) return '12PM'
+      return h < 12 ? `${h}AM` : `${h - 12}PM`
+    }
+    return counts.map((count, hour) => ({ hour, label: formatHour(hour), bookings: count }))
+  }, [bookings])
+
+  const peakHour = useMemo(() => {
+    if (bookings.length === 0) return null
+    return [...hourlyData].sort((a, b) => b.bookings - a.bookings)[0]
+  }, [hourlyData, bookings.length])
 
   return (
     <div className="space-y-6 page-enter">
@@ -191,6 +216,54 @@ export default function Analytics() {
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* Peak Hours Analysis */}
+      <Card className="overflow-hidden">
+        <CardHead
+          title="Peak Hours Analysis"
+          subtitle="All-time bookings by hour of day — when demand is highest"
+          action={peakHour && (
+            <span className="badge badge-green text-xs whitespace-nowrap">
+              Busiest: {peakHour.label} ({peakHour.bookings} rides)
+            </span>
+          )}
+        />
+        <div className="card-body h-[260px] pt-4">
+          {bookings.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-sub text-sm">
+              No booking data yet.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hourlyData} barSize={14}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={1}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                />
+                <Bar dataKey="bookings" radius={[3, 3, 0, 0]} name="Rides">
+                  {hourlyData.map((entry) => (
+                    <Cell key={entry.hour} fill={peakHour && entry.hour === peakHour.hour ? '#E84C27' : '#2E7D32'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </Card>
     </div>
