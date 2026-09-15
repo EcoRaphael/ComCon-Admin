@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  LineChart, Line, CartesianGrid, Cell,
+  LineChart, Line, CartesianGrid, Cell, LabelList,
 } from 'recharts'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -228,42 +228,55 @@ export default function Analytics() {
         <CardHead
           title="Peak Hours Analysis"
           subtitle="All-time bookings by hour of day — when demand is highest"
-          action={peakHour && (
-            <span className="badge badge-green text-xs whitespace-nowrap">
-              Busiest: {peakHour.label} ({peakHour.bookings} rides)
-            </span>
-          )}
         />
-        <div className="card-body h-[260px] pt-4">
+        <div className="card-body h-[260px] pt-6">
           {bookings.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sub text-sm">
               No booking data yet.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hourlyData} barSize={14}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <BarChart data={hourlyData} barSize={10} margin={{ top: 24, left: 0, right: 0, bottom: 0 }}>
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
                   axisLine={false}
                   tickLine={false}
-                  interval={1}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#64748b' }}
-                  axisLine={false}
-                  tickLine={false}
-                  allowDecimals={false}
+                  interval={0}
+                  tick={(props) => {
+                    const { x, y, payload } = props
+                    const isPeak = peakHour && payload.value === peakHour.label
+                    return (
+                      <text
+                        x={x} y={y + 12} textAnchor="middle"
+                        fontSize={8} fontWeight={isPeak ? 800 : 600}
+                        fill={isPeak ? '#E84C27' : '#94a3b8'}
+                      >
+                        {payload.value}
+                      </text>
+                    )
+                  }}
                 />
                 <Tooltip
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                 />
-                <Bar dataKey="bookings" radius={[3, 3, 0, 0]} name="Rides">
+                <Bar dataKey="bookings" radius={[8, 8, 8, 8]} name="Rides">
                   {hourlyData.map((entry) => (
-                    <Cell key={entry.hour} fill={peakHour && entry.hour === peakHour.hour ? '#E84C27' : '#2E7D32'} />
+                    <Cell key={entry.hour} fill={peakHour && entry.hour === peakHour.hour ? '#E84C27' : '#e2e8f0'} />
                   ))}
+                  <LabelList
+                    dataKey="bookings"
+                    content={(props) => {
+                      const { x, y, width, value, index } = props
+                      const entry = hourlyData[index]
+                      if (!peakHour || entry.hour !== peakHour.hour) return null
+                      return (
+                        <text x={x + width / 2} y={y - 10} textAnchor="middle" fill="#E84C27" fontSize={14} fontWeight={800}>
+                          {value}
+                        </text>
+                      )
+                    }}
+                  />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
