@@ -262,7 +262,7 @@ export default function Analytics() {
                 />
                 <Bar dataKey="bookings" radius={[8, 8, 8, 8]} name="Rides">
                   {hourlyData.map((entry) => (
-                    <Cell key={entry.hour} fill={peakHour && entry.hour === peakHour.hour ? '#E84C27' : '#e2e8f0'} />
+                    <Cell key={entry.hour} fill={peakHour && entry.hour === peakHour.hour ? '#E84C27' : '#c8e6c9'} />
                   ))}
                   <LabelList
                     dataKey="bookings"
