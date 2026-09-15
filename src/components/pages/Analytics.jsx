@@ -5,11 +5,8 @@ import { useAdmin } from '@/lib/AdminContext'
 import { StatCard, Card, CardHead, ProgressBar } from '@/components/ui'
 import { 
   TrendingUp, 
-  Users, 
-  CreditCard, 
   Map as MapIcon, 
   Star, 
-  Calendar,
   Zap
 } from 'lucide-react'
 import {
@@ -143,7 +140,14 @@ export default function Analytics() {
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                 />
-                <Bar dataKey="bookings" fill="#2E7D32" radius={[4, 4, 0, 0]} name="Rides" />
+                <Bar dataKey="bookings" radius={[4, 4, 0, 0]} name="Rides">
+                  {weeklyData.map((entry, i) => (
+                    // Same convention as the Dashboard's chart — today
+                    // (always the last of the 7 days built above)
+                    // highlighted in orange, everything else green.
+                    <Cell key={i} fill={i === weeklyData.length - 1 ? '#E84C27' : '#2E7D32'} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>

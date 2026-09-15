@@ -14,8 +14,12 @@ import {
   ShieldCheck,
   ChevronRight
 } from 'lucide-react'
-import { StatCard, Card, CardHead, StatusBadge, DataTable, MiniBarChart, Avatar } from '@/components/ui'
+import { StatCard, Card, CardHead, StatusBadge, DataTable, Avatar } from '@/components/ui'
 import Spinner from '@/components/ui/Spinner'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  CartesianGrid, Cell,
+} from 'recharts'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -133,22 +137,46 @@ export default function Dashboard() {
 
       {/* Bookings chart + Revenue breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 overflow-hidden">
           <CardHead title="Bookings This Week" subtitle="Daily ride volume — Calbayog City" />
-          <div className="card-body">
+          <div className="card-body h-[220px] pt-2">
             {loading ? (
-              <div className="h-24 flex items-center justify-center">
+              <div className="h-full flex items-center justify-center">
                 <Spinner size={22} />
               </div>
             ) : (
-              <>
-                <MiniBarChart data={weeklyStats} valueKey="bookings" />
-                <div className="flex justify-between mt-2">
-                  {weeklyStats.map(d => (
-                    <span key={d.day} className="text-[10px] text-sub flex-1 text-center">{d.day}</span>
-                  ))}
-                </div>
-              </>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyStats} barSize={28}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    cursor={{ fill: '#f8fafc' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    formatter={(value) => [value, 'Rides']}
+                  />
+                  <Bar dataKey="bookings" radius={[4, 4, 0, 0]} name="Rides">
+                    {weeklyStats.map((entry, i) => (
+                      // Today (always the last of the 7 days built above)
+                      // highlighted distinctly — the old MiniBarChart
+                      // highlighted an arbitrary "2nd-to-last" bar
+                      // instead, which didn't actually correspond to
+                      // anything meaningful.
+                      <Cell key={i} fill={i === weeklyStats.length - 1 ? '#E84C27' : '#2E7D32'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </div>
         </Card>
