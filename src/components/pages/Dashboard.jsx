@@ -14,7 +14,6 @@ import {
   ShieldCheck,
   ChevronRight,
   Bike,
-  Car,
   Truck,
 } from 'lucide-react'
 import { StatCard, Card, CardHead, StatusBadge, DataTable, Avatar } from '@/components/ui'
