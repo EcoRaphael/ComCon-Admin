@@ -8,7 +8,7 @@ import {
   FileSpreadsheet, History, Users, Receipt,
   Search, Calendar, ArrowRight, Download, FileText,
   ShieldCheck, ShieldAlert, ShieldQuestion, AlertTriangle,
-  CheckCircle2, Clock, Award, TrendingDown, Wallet, Trophy,
+  CheckCircle2, Award, TrendingDown, Wallet, Trophy,
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 
@@ -27,7 +27,7 @@ function generateBookingPDF(booking) {
     <html>
     <head>
       <meta charset="utf-8" />
-      <title>Booking Confirmation — ${String(b.id).slice(0, 8).toUpperCase()}</title>
+      <title>Booking Confirmation — ${String(b.id).slice(0,8).toUpperCase()}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #111; padding: 40px; max-width: 600px; margin: 0 auto; }
@@ -66,7 +66,7 @@ function generateBookingPDF(booking) {
         <div>
           <div class="brand">Commuter<span>Connect</span></div>
           <div class="ref">Booking Confirmation Receipt</div>
-          <div class="ref">Ref No: ${String(b.id).slice(0, 8).toUpperCase()}</div>
+          <div class="ref">Ref No: ${String(b.id).slice(0,8).toUpperCase()}</div>
         </div>
         <div style="text-align:right">
           <span class="badge badge-${b.status}">${b.status}</span>
@@ -177,9 +177,9 @@ function exportCSV(type, bookings, payments, toast, drivers, reports, driverPerf
   }
 
   const blob = new Blob([csv], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
@@ -189,7 +189,7 @@ function exportCSV(type, bookings, payments, toast, drivers, reports, driverPerf
 export default function Records() {
   const { bookings, payments, drivers, reports, ratings, stats, loading } = useAdmin()
   const { toast } = useToastCtx()
-  const [search, setSearch] = useState('')
+  const [search,     setSearch]     = useState('')
   const [dateFilter, setDateFilter] = useState('')
 
   const completed = bookings.filter(b => b.status === 'completed')
@@ -206,28 +206,12 @@ export default function Records() {
 
   // ── Compliance Report ──────────────────────────────────────────
   const compliance = useMemo(() => {
-    const verified = drivers.filter(d => d.verified)
-    const pending = drivers.filter(d => !d.verified)
+    const verified   = drivers.filter(d => d.verified)
+    const pending     = drivers.filter(d => !d.verified)
     const missingDocs = drivers.filter(d => !d.license_photo_path || !d.or_photo_path || !d.cr_photo_path)
-    const plateReady = (d) => d.plate && !d.plate.startsWith('PENDING-')
+    const plateReady  = (d) => d.plate && !d.plate.startsWith('PENDING-')
     return { verified, pending, missingDocs, plateReady }
   }, [drivers])
-
-  // ── Complaint & Reports Summary ─────────────────────────────────
-  const complaintSummary = useMemo(() => {
-    const pending = reports.filter(r => r.status === 'pending')
-    const resolved = reports.filter(r => r.status === 'resolved')
-    const highSeverity = reports.filter(r => r.severity === 'High')
-
-    const byType = {}
-    reports.forEach(r => {
-      const key = r.issue_type || 'Uncategorized'
-      byType[key] = (byType[key] || 0) + 1
-    })
-    const byTypeSorted = Object.entries(byType).sort((a, b) => b[1] - a[1])
-
-    return { pending, resolved, highSeverity, byTypeSorted }
-  }, [reports])
 
   // ── Driver Performance Report ────────────────────────────────────
   const driverPerformance = useMemo(() => {
@@ -286,10 +270,10 @@ export default function Records() {
     <div className="space-y-6 page-enter">
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<History size={20} className="text-green" />} iconBg="bg-green-light" value={completed.length} label="Completed Rides" />
-        <StatCard icon={<Receipt size={20} className="text-blue-600" />} iconBg="bg-blue-50" value={`₱${totalFare.toLocaleString()}`} label="Confirmed Fares" />
-        <StatCard icon={<FileSpreadsheet size={20} className="text-amber-600" />} iconBg="bg-amber-50" value={stats.totalBookings} label="Total Records" />
-        <StatCard icon={<Users size={20} className="text-purple-600" />} iconBg="bg-purple-50" value={stats.totalCustomers} label="Commuter Records" />
+        <StatCard icon={<History       size={20} className="text-green"      />} iconBg="bg-green-light" value={completed.length}                label="Completed Rides"   />
+        <StatCard icon={<Receipt       size={20} className="text-blue-600"  />} iconBg="bg-blue-50"    value={`₱${totalFare.toLocaleString()}`} label="Confirmed Fares"   />
+        <StatCard icon={<FileSpreadsheet size={20} className="text-amber-600"/>} iconBg="bg-amber-50"   value={stats.totalBookings}              label="Total Records"     />
+        <StatCard icon={<Users         size={20} className="text-purple-600"/>} iconBg="bg-purple-50"  value={stats.totalCustomers}             label="Commuter Records"  />
       </div>
 
       {/* Export cards */}
@@ -299,11 +283,12 @@ export default function Records() {
           subtitle="Generate official ride records and fare summaries for LTFRB auditing"
         />
         <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: 'Booking Confirmations', desc: 'Detailed log of passenger assignments', type: 'bookings', icon: <Users size={16} /> },
-              { label: 'Fare Details Report', desc: 'Financial records and payment methods', type: 'fares', icon: <Receipt size={16} /> },
-              { label: 'Full Ride History', desc: 'End-to-end trip data and timestamps', type: 'rides', icon: <History size={16} /> },
+              { label: 'Fare Details Report',   desc: 'Financial records and payment methods', type: 'fares',    icon: <Receipt size={16} /> },
+              { label: 'Full Ride History',      desc: 'End-to-end trip data and timestamps',  type: 'rides',    icon: <History size={16} /> },
+              { label: 'Complaint Report',       desc: 'Filed reports by issue, severity, and status', type: 'complaints', icon: <AlertTriangle size={16} /> },
             ].map(item => (
               <div key={item.type} className="group hover:border-green transition-all bg-white rounded-xl p-5 border border-border flex flex-col justify-between">
                 <div>
@@ -402,68 +387,6 @@ export default function Records() {
                 </tbody>
               </DataTable>
             </div>
-          )}
-        </div>
-      </Card>
-
-      {/* Complaint & Reports Summary */}
-      <Card>
-        <CardHead
-          title="Complaint & Reports Summary"
-          subtitle="Filed reports by category, severity, and resolution status"
-          action={
-            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('complaints', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
-              <Download size={14} /> Export CSV
-            </button>
-          }
-        />
-        <div className="card-body">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-            <div className="bg-amber-50 rounded-xl p-4 flex items-center gap-3">
-              <Clock className="text-amber-600" size={22} />
-              <div>
-                <p className="text-2xl font-black text-navy">{complaintSummary.pending.length}</p>
-                <p className="text-[11px] text-sub font-semibold">Pending Reports</p>
-              </div>
-            </div>
-            <div className="bg-green-light rounded-xl p-4 flex items-center gap-3">
-              <CheckCircle2 className="text-green" size={22} />
-              <div>
-                <p className="text-2xl font-black text-navy">{complaintSummary.resolved.length}</p>
-                <p className="text-[11px] text-sub font-semibold">Resolved</p>
-              </div>
-            </div>
-            <div className="bg-red-50 rounded-xl p-4 flex items-center gap-3">
-              <AlertTriangle className="text-red-600" size={22} />
-              <div>
-                <p className="text-2xl font-black text-navy">{complaintSummary.highSeverity.length}</p>
-                <p className="text-[11px] text-sub font-semibold">High Severity</p>
-              </div>
-            </div>
-          </div>
-
-          {complaintSummary.byTypeSorted.length > 0 ? (
-            <div>
-              <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-2">By Issue Type</p>
-              <div className="space-y-2">
-                {complaintSummary.byTypeSorted.map(([type, count]) => {
-                  const pct = Math.round((count / reports.length) * 100)
-                  return (
-                    <div key={type}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="font-semibold text-navy">{type}</span>
-                        <span className="text-sub">{count} ({pct}%)</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden">
-                        <div className="h-full bg-cta rounded-full" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : (
-            <p className="text-sub text-sm text-center py-6">No reports filed yet.</p>
           )}
         </div>
       </Card>
@@ -692,10 +615,11 @@ export default function Records() {
                         {new Date(b.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td>
-                        <div className={`badge ${b.status === 'completed' ? 'badge-green' :
-                            b.status === 'ongoing' ? 'badge-blue' :
-                              b.status === 'cancelled' ? 'badge-red' : 'badge-amber'
-                          }`}>
+                        <div className={`badge ${
+                          b.status === 'completed' ? 'badge-green' :
+                          b.status === 'ongoing'   ? 'badge-blue'  :
+                          b.status === 'cancelled' ? 'badge-red'   : 'badge-amber'
+                        }`}>
                           {b.status}
                         </div>
                       </td>

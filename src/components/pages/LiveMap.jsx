@@ -22,12 +22,15 @@ L.Icon.Default.mergeOptions({
 
 const CALBAYOG_CENTER = [12.0674, 124.5946]
 
-// TEMPORARY: no real GPS integration yet, so every driver falls back to
-// the same center point. This spreads them into a small deterministic
-// circle around the center — based on the driver's own id, so a given
-// driver always lands in the same spot (not random each refresh) —
-// purely so multiple drivers are visually distinguishable on the map.
-// Remove this once real driver_locations tracking is wired up.
+// Live GPS is now wired up (see driver_live_location.sql +
+// DriverDashboard.jsx) — a driver's real position is used whenever it's
+// available. This fallback only applies to drivers who are online but
+// haven't reported a position yet (e.g. just went online moments ago,
+// location permission denied, or browser doesn't support geolocation).
+// It spreads them into a small deterministic circle around the center —
+// based on the driver's own id, so a given driver always lands in the
+// same spot (not random each refresh) — purely so multiple drivers are
+// visually distinguishable on the map while genuinely un-positioned.
 const getFallbackPosition = (driver, index, total) => {
   if (driver.latitude && driver.longitude) {
     return [driver.latitude, driver.longitude]
@@ -79,6 +82,11 @@ export default function LiveMap() {
   activeDrivers.forEach((d, i) => {
     positionsById[d.id] = getFallbackPosition(d, i, activeDrivers.length)
   })
+
+  // Whether any online driver still lacks a real reported position —
+  // determines if the "placeholder positions" warning below is still
+  // relevant, now that real GPS genuinely exists for drivers who have it.
+  const hasFallbackDrivers = activeDrivers.some(d => !(d.latitude && d.longitude))
 
   const initials = (name) =>
     name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'DR'
@@ -179,9 +187,11 @@ export default function LiveMap() {
                   📍 Calbayog City
                 </div>
 
-                <div className="absolute bottom-3 right-3 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1 text-[10px] sm:text-xs font-bold text-amber-700 shadow z-[400]">
-                  ⚠️ Placeholder positions — live GPS not yet connected
-                </div>
+                {hasFallbackDrivers && (
+                  <div className="absolute bottom-3 right-3 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1 text-[10px] sm:text-xs font-bold text-amber-700 shadow z-[400]">
+                    ⚠️ Some drivers showing placeholder positions — no GPS reported yet
+                  </div>
+                )}
                 
                 {/* Conditional hint text to let mobile users know how to interact */}
                 <div className="absolute top-3 right-3 bg-white/90 rounded-lg px-3 py-1.5 text-xs text-sub shadow z-[400]">

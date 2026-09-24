@@ -25,7 +25,11 @@ import {
   Calendar,
   CreditCard,
   MapPin,
-  ClipboardCheck
+  ClipboardCheck,
+  Eye,
+  EyeOff,
+  Upload,
+  X,
 } from 'lucide-react'
 
 const VEHICLE_TYPES = ['Tricycle', 'Timbol', 'Multicab']
@@ -37,10 +41,17 @@ const TYPE_ICONS = {
 }
 
 const EMPTY_FORM = {
-  name: '', phone: '', email: '', route: '', licenseNo: '',
+  name: '', phone: '', email: '', password: '', address: '', route: '', licenseNo: '',
   plate: '', type: 'Tricycle', color: '', year: '',
   brand: '', orNumber: '', crNumber: '', ltfrbPermit: '',
+  paymentMethods: ['cash'],
 }
+
+const PAYMENT_METHOD_OPTIONS = [
+  { key: 'cash',  label: 'Cash',  icon: '💵' },
+  { key: 'gcash', label: 'GCash', icon: '📱' },
+  { key: 'maya',  label: 'Maya',  icon: '💳' },
+]
 
 export default function Drivers() {
   const { drivers, toggleDriverStatus, verifyDriver, updateDriverDetails, addDriver, deleteDriver, stats, loading } = useAdmin()
@@ -51,6 +62,7 @@ export default function Drivers() {
   const [modalOpen, setModalOpen] = useState(false)
   const [viewDriver, setViewDriver] = useState(null)
   const [activeTab, setActiveTab] = useState('driver')
+  const [registerTab, setRegisterTab] = useState('driver')
   const [saving, setSaving] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [driverVehicle,  setDriverVehicle]  = useState(null)
@@ -62,6 +74,8 @@ export default function Drivers() {
   const [plateEdit,      setPlateEdit]      = useState({ plate: '', licenseNo: '' })
   const [savingPlate,    setSavingPlate]    = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [regDocs, setRegDocs] = useState({ license_front: null, license_back: null, or: null, cr: null })
+  const [showRegPassword, setShowRegPassword] = useState(false)
 
   // Open modal if navigated here from Topbar CTA
   const location = useLocation()
@@ -187,12 +201,30 @@ export default function Drivers() {
       toast('⚠️ Please fill in Name, Plate, and Route')
       return
     }
+    if (!form.email || !form.password) {
+      toast('⚠️ Email and password are required — this creates the account the driver will actually log in with')
+      return
+    }
+    if (form.password.length < 8) {
+      toast('⚠️ Password must be at least 8 characters')
+      return
+    }
+    if (form.paymentMethods.length === 0) {
+      toast('⚠️ Select at least one payment method this driver accepts')
+      return
+    }
     setSaving(true)
-    await addDriver(form)
-    toast('✅ Driver & vehicle registered — pending verification')
+    const { error, warning } = await addDriver({ ...form, docs: regDocs })
+    setSaving(false)
+    if (error) {
+      toast('Failed to register driver: ' + error.message)
+      return
+    }
+    toast(warning ? '⚠️ ' + warning : '✅ Driver account created — pending verification')
     setModalOpen(false)
     setForm(EMPTY_FORM)
-    setSaving(false)
+    setRegDocs({ license_front: null, license_back: null, or: null, cr: null })
+    setRegisterTab('driver')
   }
 
   const initials = (name) =>
@@ -372,25 +404,33 @@ export default function Drivers() {
       </Card>
 
       {/* ── ADD DRIVER MODAL ── */}
-      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setForm(EMPTY_FORM) }} title="Register New Driver">
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setForm(EMPTY_FORM); setRegDocs({ license_front: null, license_back: null, or: null, cr: null }); setRegisterTab('driver') }} title="Register New Driver">
         <div className="flex gap-1 bg-surface rounded-xl p-1 mb-5">
-          <button onClick={() => setActiveTab('driver')}
+          <button onClick={() => setRegisterTab('driver')}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-              activeTab === 'driver' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
+              registerTab === 'driver' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
             }`}>
             <User className="w-4 h-4" /> Driver Info
           </button>
-          <button onClick={() => setActiveTab('vehicle')}
+          <button onClick={() => setRegisterTab('vehicle')}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-              activeTab === 'vehicle' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
+              registerTab === 'vehicle' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
             }`}>
             <Car className="w-4 h-4" /> Vehicle Info
           </button>
+          <button onClick={() => setRegisterTab('documents')}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+              registerTab === 'documents' ? 'bg-white text-navy shadow-sm' : 'text-sub hover:text-navy'
+            }`}>
+            <ClipboardCheck className="w-4 h-4" /> Documents
+          </button>
         </div>
 
-        {activeTab === 'driver' && (
+        {registerTab === 'driver' && (
           <div className="space-y-1">
-            <p className="text-xs text-sub mb-3">Basic driver information — all fields marked * are required.</p>
+            <p className="text-xs text-sub mb-3">
+              Basic driver information — email and password create the actual account this driver will log in with.
+            </p>
             <div className="grid grid-cols-2 gap-x-4">
               <Field label="Full Name *">
                 <input className="field-input" placeholder="Juan Dela Cruz" value={form.name}
@@ -401,9 +441,29 @@ export default function Drivers() {
                   onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
               </Field>
             </div>
-            <Field label="Email Address">
+            <Field label="Email Address *">
               <input className="field-input" type="email" placeholder="driver@email.com" value={form.email}
                 onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+            </Field>
+            <Field label="Password * (min. 8 characters)">
+              <div className="relative">
+                <input
+                  className="field-input pr-10" type={showRegPassword ? 'text' : 'password'}
+                  placeholder="Set an initial password for this driver" value={form.password}
+                  onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                />
+                <button type="button" onClick={() => setShowRegPassword(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sub hover:text-navy">
+                  {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </Field>
+            <p className="text-[11px] text-sub -mt-1">
+              Share this password with the driver directly — they can change it themselves afterward from their profile.
+            </p>
+            <Field label="Address">
+              <input className="field-input" placeholder="e.g. Brgy. Obrero, Calbayog City" value={form.address}
+                onChange={e => setForm(p => ({ ...p, address: e.target.value }))} />
             </Field>
             <Field label="Route Assignment *">
               <input className="field-input" placeholder="e.g. Nijaga Park ↔ Calbayog Port" value={form.route}
@@ -413,13 +473,13 @@ export default function Drivers() {
               <input className="field-input" placeholder="LTFRB-VIII-XXXX" value={form.licenseNo}
                 onChange={e => setForm(p => ({ ...p, licenseNo: e.target.value }))} />
             </Field>
-            <button className="btn-primary w-full mt-3 flex items-center justify-center gap-2" onClick={() => setActiveTab('vehicle')}>
+            <button className="btn-primary w-full mt-3 flex items-center justify-center gap-2" onClick={() => setRegisterTab('vehicle')}>
               Next — Vehicle Info <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {activeTab === 'vehicle' && (
+        {registerTab === 'vehicle' && (
           <div className="space-y-1">
             <p className="text-xs text-sub mb-3">Vehicle details for LTFRB verification — plate number is required.</p>
             <div className="grid grid-cols-2 gap-x-4">
@@ -462,12 +522,74 @@ export default function Drivers() {
               <input className="field-input" placeholder="e.g. LTFRB-VIII-XXXX" value={form.ltfrbPermit}
                 onChange={e => setForm(p => ({ ...p, ltfrbPermit: e.target.value }))} />
             </Field>
+            <Field label="Payment Methods Accepted *">
+              <div className="grid grid-cols-3 gap-2">
+                {PAYMENT_METHOD_OPTIONS.map(({ key, label, icon }) => {
+                  const selected = form.paymentMethods.includes(key)
+                  return (
+                    <button key={key} type="button"
+                      onClick={() => setForm(p => ({
+                        ...p,
+                        paymentMethods: selected ? p.paymentMethods.filter(m => m !== key) : [...p.paymentMethods, key],
+                      }))}
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 text-xs font-bold transition-colors ${
+                        selected ? 'border-green bg-green-light text-green' : 'border-border text-sub hover:border-green/30'
+                      }`}>
+                      <span className="text-base">{icon}</span>
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </Field>
             <div className="flex gap-3 mt-3">
-              <button className="btn-ghost flex-1 flex items-center justify-center gap-2" onClick={() => setActiveTab('driver')}>
+              <button className="btn-ghost flex-1 flex items-center justify-center gap-2" onClick={() => setRegisterTab('driver')}>
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <button className="btn-primary flex-1 flex items-center justify-center gap-2" onClick={() => setRegisterTab('documents')}>
+                Next — Documents <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {registerTab === 'documents' && (
+          <div className="space-y-3">
+            <p className="text-xs text-sub mb-1">
+              Optional at this step — if you have scanned copies of their License (front/back), OR, and CR on hand, upload them now so verification review can happen immediately. You can also add these later from the driver's detail view.
+            </p>
+            {[
+              { key: 'license_front', label: "Driver's License — Front" },
+              { key: 'license_back',  label: "Driver's License — Back" },
+              { key: 'or',            label: 'OR (Official Receipt)' },
+              { key: 'cr',            label: 'CR (Certificate of Registration)' },
+            ].map(({ key, label }) => (
+              <div key={key}>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-sub ml-1">{label}</label>
+                {regDocs[key] ? (
+                  <div className="mt-1.5 flex items-center gap-3 bg-surface rounded-xl p-2.5">
+                    <p className="flex-1 text-xs font-semibold text-navy truncate">{regDocs[key].name}</p>
+                    <button type="button" onClick={() => setRegDocs(p => ({ ...p, [key]: null }))}
+                      className="p-1.5 text-sub hover:text-red-600 flex-shrink-0">
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="mt-1.5 flex items-center justify-center gap-2 h-12 border-2 border-dashed border-border rounded-xl text-sub text-xs font-bold cursor-pointer hover:border-green/40 hover:text-green transition-colors">
+                    <Upload size={14} />
+                    Choose File
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={e => setRegDocs(p => ({ ...p, [key]: e.target.files?.[0] || null }))} />
+                  </label>
+                )}
+              </div>
+            ))}
+            <div className="flex gap-3 mt-3">
+              <button className="btn-ghost flex-1 flex items-center justify-center gap-2" onClick={() => setRegisterTab('vehicle')}>
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
               <button className="btn-primary flex-1 disabled:opacity-60" onClick={handleAdd} disabled={saving}>
-                {saving ? 'Registering...' : 'Register Driver & Vehicle'}
+                {saving ? 'Registering...' : 'Register Driver'}
               </button>
             </div>
           </div>

@@ -12,10 +12,16 @@ import {
   Clock, 
   Star, 
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Bike,
+  Truck,
 } from 'lucide-react'
-import { StatCard, Card, CardHead, StatusBadge, DataTable, MiniBarChart, Avatar } from '@/components/ui'
+import { StatCard, Card, CardHead, StatusBadge, DataTable, Avatar } from '@/components/ui'
 import Spinner from '@/components/ui/Spinner'
+import {
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
+  CartesianGrid, AreaChart, Area,
+} from 'recharts'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -42,13 +48,16 @@ export default function Dashboard() {
   }, [bookings, payments])
 
   const vehicleBreakdown = useMemo(() => {
-    const types = ['Tricycle', 'Timbol', 'Multicab']
+    const types = [
+      { label: 'Tricycle', color: '#2E7D32' },
+      { label: 'Timbol',   color: '#3b82f6' },
+      { label: 'Multicab', color: '#a855f7' },
+    ]
     const total = bookings.filter(b => b.status === 'completed').length || 1
-    return types.map(t => ({
-      label: t,
-      // Removed emojis, you can add specific icons here if needed
-      pct:   Math.round((bookings.filter(b => b.vehicle_type === t && b.status === 'completed').length / total) * 100),
-    }))
+    return types.map(({ label, color }) => {
+      const count = bookings.filter(b => b.vehicle_type === label && b.status === 'completed').length
+      return { label, color, count, pct: Math.round((count / total) * 100) }
+    })
   }, [bookings])
 
   const initials = (name) =>
@@ -131,51 +140,89 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Bookings chart + Revenue breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
-          <CardHead title="Bookings This Week" subtitle="Daily ride volume — Calbayog City" />
-          <div className="card-body">
-            {loading ? (
-              <div className="h-24 flex items-center justify-center">
-                <Spinner size={22} />
-              </div>
-            ) : (
-              <>
-                <MiniBarChart data={weeklyStats} valueKey="bookings" />
-                <div className="flex justify-between mt-2">
-                  {weeklyStats.map(d => (
-                    <span key={d.day} className="text-[10px] text-sub flex-1 text-center">{d.day}</span>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </Card>
-
-        <Card>
-          <CardHead title="Revenue" subtitle="From completed ride fares" />
-          <div className="card-body space-y-3">
+      {/* Revenue trend + Vehicle breakdown */}
+      <Card className="overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3">
+          {/* Headline */}
+          <div className="p-5 lg:border-r border-border flex flex-col justify-center">
+            <p className="text-xs font-bold text-sub uppercase tracking-wider mb-1">Total Revenue</p>
             <p className="text-3xl font-black text-navy">
               ₱{stats.totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
             </p>
-            <p className="text-xs text-sub">From {stats.completedBookings} completed rides</p>
-            <div className="pt-2 space-y-2">
-              {vehicleBreakdown.map(({ label, pct }) => (
-                <div key={label}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>{label}</span>
-                    <span className="font-bold">{pct}%</span>
-                  </div>
-                  <div className="bg-surface rounded-full h-1.5">
-                    <div className="h-full rounded-full bg-green transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-xs text-sub mt-1">From {stats.completedBookings} completed rides</p>
           </div>
-        </Card>
-      </div>
+
+          {/* Gradient area chart — 7-day daily revenue, matching the
+              window used by every other chart on this dashboard, rather
+              than the full-month view of the original reference design.
+              A "vs. last month" comparison line was considered but
+              deliberately left out of this pass — worth revisiting later
+              once there's a clear need for period-over-period tracking. */}
+          <div className="lg:col-span-2 p-5 h-[220px]">
+            {loading ? (
+              <div className="h-full flex items-center justify-center">
+                <Spinner size={22} />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={weeklyStats}>
+                  <defs>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2E7D32" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#2E7D32" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(val) => `₱${val}`}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    formatter={(value) => [`₱${Number(value).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`, 'Revenue']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#2E7D32"
+                    strokeWidth={2.5}
+                    fill="url(#revenueGradient)"
+                    dot={{ fill: '#2E7D32', r: 3, strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Vehicle type breakdown strip */}
+        <div className="border-t border-border grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+          {vehicleBreakdown.map(({ label, color, count, pct }) => {
+            const Icon = label === 'Tricycle' ? Bike : label === 'Timbol' ? Car : Truck
+            return (
+              <div key={label} className="p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon size={16} style={{ color }} />
+                  <span className="text-lg font-black text-navy">{count}</span>
+                </div>
+                <p className="text-xs text-sub mb-3">{label} · {pct}%</p>
+                <div className="bg-surface rounded-full h-1.5">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </Card>
 
       {/* Recent bookings + complaints */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -237,38 +237,106 @@ export function AdminProvider({ children }) {
   // ── ADD DRIVER + VEHICLE together ─────────────────────────
   // Optimized: UI updates after step 2, vehicles+log run in parallel (non-blocking)
   const addDriver = useCallback(async (form) => {
-    // Step 1: Create user (need ID for driver)
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .insert({ name: form.name, email: form.email || null, phone: form.phone || null, role: 'driver', status: 'active' })
-      .select('id').single()
-    if (userError) { console.error('[addDriver] user error:', userError); return }
+    // 1. Create the actual login-capable account. The OLD version of
+    // this function only ever inserted directly into public.users/
+    // public.drivers — it never created an auth.users entry at all,
+    // meaning a driver "registered" this way had no email/password
+    // combination that could ever sign in. This is the same fix that
+    // gave self-registration a real account.
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: { data: { name: form.name, role: 'driver' } },
+    })
+    if (signUpError) return { error: signUpError }
+    const userId = authData?.user?.id
+    if (!userId) return { error: { message: 'Signup failed — no user ID returned.' } }
 
-    // Step 2: Create driver (need ID for vehicle)
-    const { data: driverData, error: driverError } = await supabase
-      .from('drivers')
-      .insert({ user_id: userData.id, name: form.name, plate: form.plate, vehicle_type: form.type, route: form.route, license_no: form.licenseNo || null, status: 'inactive', verified: false })
-      .select().single()
-    if (driverError) { console.error('[addDriver] driver error:', driverError); return }
+    // 2. Same SECURITY DEFINER RPC used for self-registration — creates
+    // the users/drivers rows and confirms their email immediately
+    // (bypassing the OTP-style wait, since admin is vouching for this
+    // driver directly). Unlike self-registration, admin enters the REAL
+    // plate here directly rather than a placeholder — they have the
+    // physical documents in hand, so there's no need to defer it to a
+    // later review step.
+    const { error: registerErr } = await supabase.rpc('complete_driver_registration', {
+      p_user_id: userId,
+      p_phone: form.phone?.trim() || null,
+      p_address: form.address?.trim() || null,
+      p_address_lat: null,
+      p_address_lng: null,
+      p_plate: form.plate.trim().toUpperCase(),
+      p_vehicle_type: form.type,
+      p_route: form.route?.trim() || '',
+      p_payment_methods: form.paymentMethods?.length ? form.paymentMethods : ['cash'],
+    })
+    if (registerErr) return { error: registerErr }
 
-    // Step 3: Update UI immediately — modal closes, driver appears in list
-    setDrivers(prev => [driverData, ...prev])
+    // The RPC returns void, but the `vehicles` table (a separate, more
+    // detailed record — brand/year/OR/CR/LTFRB permit, shown in the
+    // driver detail modal) needs the new drivers.id as a foreign key, so
+    // it has to be looked up rather than returned directly.
+    const { data: newDriver } = await supabase
+      .from('drivers').select('id').eq('user_id', userId).maybeSingle()
 
-    // Step 4: Insert vehicle + activity log in parallel (background, non-blocking)
-    Promise.all([
+    if (newDriver?.id) {
       supabase.from('vehicles').insert({
-        driver_id: driverData.id, plate_number: form.plate, type: form.type,
+        driver_id: newDriver.id, plate_number: form.plate.trim().toUpperCase(), type: form.type,
         color: form.color || null, year: form.year ? parseInt(form.year) : null,
         brand: form.brand || null, or_number: form.orNumber || null,
         cr_number: form.crNumber || null, ltfrb_permit: form.ltfrbPermit || null,
         is_verified: false, status: 'active',
-      }),
-      supabase.from('activity_log')
-        .insert({ icon: '🛺', text: `New driver registered — ${form.name} · ${form.type} · ${form.plate}`, user_id: userData.id })
-        .select('id, icon, text, created_at').single()
-    ]).then(([_, logResult]) => {
-      if (logResult.data) setActivityLog(prev => [logResult.data, ...prev].slice(0, 50))
-    }).catch(err => console.error('[addDriver] background inserts:', err))
+      }).then(({ error }) => {
+        if (error) console.error('[addDriver] vehicle record failed:', error)
+      })
+    }
+
+    // 3. Documents, if admin provided them now — works because admin's
+    // own session is used (not the new driver's, which doesn't exist as
+    // a usable session yet), thanks to admin_upload_driver_documents.sql
+    // granting admin INSERT access into any driver's document folder.
+    let docWarning = null
+    if (form.docs?.license_front && form.docs?.license_back && form.docs?.or && form.docs?.cr) {
+      try {
+        const uploadDoc = async (key, file) => {
+          const ext = file.name.split('.').pop() || 'jpg'
+          const path = `${userId}/${key}.${ext}`
+          const { error: uploadErr } = await supabase.storage
+            .from('driver-documents')
+            .upload(path, file, { upsert: true, contentType: file.type })
+          if (uploadErr) throw new Error(`${key}: ${uploadErr.message}`)
+          return path
+        }
+        const [licenseFrontPath, licenseBackPath, orPath, crPath] = await Promise.all([
+          uploadDoc('license_front', form.docs.license_front),
+          uploadDoc('license_back', form.docs.license_back),
+          uploadDoc('or', form.docs.or),
+          uploadDoc('cr', form.docs.cr),
+        ])
+        await supabase.from('drivers').update({
+          license_photo_path: licenseFrontPath,
+          license_back_photo_path: licenseBackPath,
+          or_photo_path: orPath,
+          cr_photo_path: crPath,
+        }).eq('user_id', userId)
+      } catch (docErr) {
+        // Don't fail the whole registration over a document hiccup — the
+        // driver record already exists and works; admin can retry the
+        // upload from the driver's detail view afterward.
+        console.error('[addDriver] document upload failed:', docErr)
+        docWarning = 'Driver account created, but document upload failed: ' + docErr.message
+      }
+    }
+
+    // 4. Activity log — the drivers list itself updates via the existing
+    // realtime subscription (no need to manually patch local state here).
+    supabase.from('activity_log')
+      .insert({ icon: '🛺', text: `New driver registered by admin — ${form.name} · ${form.type} · ${form.plate}`, user_id: userId })
+      .select('id, icon, text, created_at').single()
+      .then(({ data }) => { if (data) setActivityLog(prev => [data, ...prev].slice(0, 50)) })
+      .catch(err => console.error('[addDriver] activity log:', err))
+
+    return { error: null, warning: docWarning }
   }, [])
 
   // ── DELETE DRIVER ─────────────────────────────────────────

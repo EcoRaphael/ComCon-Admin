@@ -57,6 +57,7 @@ export default function Notifications() {
   const [search, setSearch] = useState('')
   const [sending, setSending] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [markingAll, setMarkingAll] = useState(false)
   const [form, setForm] = useState({ title: '', message: '', type: 'system', target: 'all' })
 
   // Tracks the title+message of a broadcast this admin just sent, so the
@@ -98,6 +99,14 @@ export default function Notifications() {
         // Normal case: one external event, one toast.
         setNotifications(prev => [payload.new, ...prev].slice(0, 200))
         toast(`🔔 New activity: ${payload.new.title}`)
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload) => {
+        // Keeps read/unread status in sync across every open session —
+        // without this, marking something read (individually or via
+        // "Mark all read") in one tab, or from a second admin account
+        // viewing this same page, wouldn't show up anywhere else until a
+        // manual refresh.
+        setNotifications(prev => prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n))
       })
       .subscribe()
 
@@ -166,6 +175,20 @@ export default function Notifications() {
   async function handleMarkRead(id) {
     const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id)
     if (!error) setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+  }
+
+  async function handleMarkAllRead() {
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
+    if (unreadIds.length === 0) return
+    setMarkingAll(true)
+    const { error } = await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds)
+    if (!error) {
+      setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, is_read: true } : n))
+      toast(`Marked ${unreadIds.length} notification(s) as read`)
+    } else {
+      toast('Failed to mark all as read: ' + error.message)
+    }
+    setMarkingAll(false)
   }
 
   const filtered = useMemo(() => notifications.filter(n => {
@@ -260,7 +283,7 @@ export default function Notifications() {
               onChange={e => setSearch(e.target.value)} 
             />
           </div>
-          <div className="flex gap-1 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+          <div className="flex gap-1 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 items-center">
             {['all', 'unread', 'alert', 'booking', 'report'].map(f => (
               <button 
                 key={f} 
@@ -272,6 +295,16 @@ export default function Notifications() {
                 {f}
               </button>
             ))}
+            {stats.unread > 0 && (
+              <button
+                onClick={handleMarkAllRead}
+                disabled={markingAll}
+                className="ml-2 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap text-green border border-green/30 hover:bg-green-light transition-all disabled:opacity-50"
+              >
+                <CheckCheck size={13} />
+                {markingAll ? 'Marking...' : `Mark all read (${stats.unread})`}
+              </button>
+            )}
           </div>
         </div>
 

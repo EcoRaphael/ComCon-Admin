@@ -1,6 +1,6 @@
 // src/components/pages/Reports.jsx
 // Objective 4: organize reports, ratings, and complaints
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
@@ -19,6 +19,19 @@ export default function Reports() {
   const [search,   setSearch]   = useState('')
   const [selected, setSelected] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // Issue-type breakdown — moved here from the Reports (formerly
+  // "Records") page, since it's specifically about complaints and
+  // belongs alongside the actual complaint management workflow rather
+  // than on a separate analytics/export page.
+  const byTypeSorted = useMemo(() => {
+    const byType = {}
+    reports.forEach(r => {
+      const key = r.issue_type || 'Uncategorized'
+      byType[key] = (byType[key] || 0) + 1
+    })
+    return Object.entries(byType).sort((a, b) => b[1] - a[1])
+  }, [reports])
 
   // Deep-link support: /reports?id=<report_id> opens that report's modal directly
   // (used when navigating in from a notification).
@@ -57,14 +70,37 @@ export default function Reports() {
   return (
     <div className="space-y-5 page-enter">
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={<AlertTriangle size={20} className="text-red-600" />}  iconBg="bg-red-50"      value={stats.highSeverityReports} label="High Severity" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={<AlertCircle size={20} className="text-blue-600" />}     iconBg="bg-blue-50"     value={reports.filter(r => r.status === 'pending').length} label="Pending" />
         <StatCard icon={<Clock size={20} className="text-amber-600" />}        iconBg="bg-amber-50"    value={reports.filter(r => r.status === 'under review').length} label="Under Review" />
         <StatCard icon={<CheckCircle2 size={20} className="text-green" />}     iconBg="bg-green-light" value={reports.filter(r => r.status === 'resolved').length} label="Resolved" />
+        <StatCard icon={<AlertTriangle size={20} className="text-red-600" />}  iconBg="bg-red-50"      value={stats.highSeverityReports} label="High Severity" />
       </div>
 
+      {byTypeSorted.length > 0 && (
+        <Card>
+          <CardHead title="By Issue Type" subtitle="Which categories of complaints come up most often" />
+          <div className="card-body space-y-2">
+            {byTypeSorted.map(([type, count]) => {
+              const pct = Math.round((count / reports.length) * 100)
+              return (
+                <div key={type}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-semibold text-navy">{type}</span>
+                    <span className="text-sub">{count} ({pct}%)</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden">
+                    <div className="h-full bg-cta rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
       <Card>
-        <CardHead title="Commuter Complaints & Reports" />
+        <CardHead title="Commuter Complaints & Incidents" />
 
         <div className="px-5 py-3 border-b border-border flex flex-wrap gap-4 items-center justify-between">
           <div className="relative w-full max-w-xs">

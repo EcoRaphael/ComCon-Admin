@@ -5,16 +5,13 @@ import { useAdmin } from '@/lib/AdminContext'
 import { StatCard, Card, CardHead, ProgressBar } from '@/components/ui'
 import { 
   TrendingUp, 
-  Users, 
-  CreditCard, 
   Map as MapIcon, 
   Star, 
-  Calendar,
   Zap
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  LineChart, Line, CartesianGrid,
+  LineChart, Line, CartesianGrid, Cell, LabelList,
 } from 'recharts'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -37,7 +34,7 @@ export default function Analytics() {
       
       const dayBookings = bookings.filter(b => b.created_at?.startsWith(dateStr))
       const dayRevenue = payments
-        .filter(p => p.status === 'paid' && p.created_at?.startsWith(dateStr))
+        .filter(p => p.status === 'completed' && p.created_at?.startsWith(dateStr))
         .reduce((s, p) => s + Number(p.amount || 0), 0)
 
       return {
@@ -60,6 +57,31 @@ export default function Analytics() {
       color: VEHICLE_COLORS[t]
     }))
   }, [bookings])
+
+  // Peak Hours Analysis — groups all-time bookings by hour of day
+  // (0-23) rather than by date, to show WHEN during the day demand is
+  // highest, independent of which specific day it fell on. Same
+  // all-time-snapshot approach as the other reports in Records.jsx,
+  // rather than bounding to a rolling window, for consistency.
+  const hourlyData = useMemo(() => {
+    const counts = Array.from({ length: 24 }, () => 0)
+    bookings.forEach(b => {
+      if (!b.created_at) return
+      const hour = new Date(b.created_at).getHours()
+      counts[hour]++
+    })
+    const formatHour = (h) => {
+      if (h === 0) return '12AM'
+      if (h === 12) return '12PM'
+      return h < 12 ? `${h}AM` : `${h - 12}PM`
+    }
+    return counts.map((count, hour) => ({ hour, label: formatHour(hour), bookings: count }))
+  }, [bookings])
+
+  const peakHour = useMemo(() => {
+    if (bookings.length === 0) return null
+    return [...hourlyData].sort((a, b) => b.bookings - a.bookings)[0]
+  }, [hourlyData, bookings.length])
 
   return (
     <div className="space-y-6 page-enter">
@@ -118,7 +140,14 @@ export default function Analytics() {
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                 />
-                <Bar dataKey="bookings" fill="#2E7D32" radius={[4, 4, 0, 0]} name="Rides" />
+                <Bar dataKey="bookings" radius={[4, 4, 0, 0]} name="Rides">
+                  {weeklyData.map((entry, i) => (
+                    // Same convention as the Dashboard's chart — today
+                    // (always the last of the 7 days built above)
+                    // highlighted in orange, everything else green.
+                    <Cell key={i} fill={i === weeklyData.length - 1 ? '#E84C27' : '#2E7D32'} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -191,6 +220,67 @@ export default function Analytics() {
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* Peak Hours Analysis */}
+      <Card className="overflow-hidden">
+        <CardHead
+          title="Peak Hours Analysis"
+          subtitle="All-time bookings by hour of day — when demand is highest"
+        />
+        <div className="card-body h-[260px] pt-6">
+          {bookings.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-sub text-sm">
+              No booking data yet.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hourlyData} barSize={10} margin={{ top: 24, left: 0, right: 0, bottom: 0 }}>
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                  tick={(props) => {
+                    const { x, y, payload } = props
+                    const isPeak = peakHour && payload.value === peakHour.label
+                    return (
+                      <text
+                        x={x} y={y + 12} textAnchor="middle"
+                        fontSize={8} fontWeight={isPeak ? 800 : 600}
+                        fill={isPeak ? '#E84C27' : '#94a3b8'}
+                      >
+                        {payload.value}
+                      </text>
+                    )
+                  }}
+                />
+                <Tooltip
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                />
+                <Bar dataKey="bookings" radius={[8, 8, 8, 8]} name="Rides">
+                  {hourlyData.map((entry) => (
+                    <Cell key={entry.hour} fill={peakHour && entry.hour === peakHour.hour ? '#E84C27' : '#c8e6c9'} />
+                  ))}
+                  <LabelList
+                    dataKey="bookings"
+                    content={(props) => {
+                      const { x, y, width, value, index } = props
+                      const entry = hourlyData[index]
+                      if (!peakHour || entry.hour !== peakHour.hour) return null
+                      return (
+                        <text x={x + width / 2} y={y - 10} textAnchor="middle" fill="#E84C27" fontSize={14} fontWeight={800}>
+                          {value}
+                        </text>
+                      )
+                    }}
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </Card>
     </div>
