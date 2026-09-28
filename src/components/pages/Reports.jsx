@@ -27,8 +27,12 @@ export default function Reports() {
   const byTypeSorted = useMemo(() => {
     const byType = {}
     reports.forEach(r => {
-      const key = r.issue_type || 'Uncategorized'
-      byType[key] = (byType[key] || 0) + 1
+      // issue_type is now an array (a report can flag multiple issues at
+      // once) — each selected type counts toward its own bucket here,
+      // rather than the whole combination being treated as one bucket.
+      const types = Array.isArray(r.issue_type) ? r.issue_type : [r.issue_type].filter(Boolean)
+      const keys = types.length > 0 ? types : ['Uncategorized']
+      keys.forEach(key => { byType[key] = (byType[key] || 0) + 1 })
     })
     return Object.entries(byType).sort((a, b) => b[1] - a[1])
   }, [reports])
@@ -54,7 +58,7 @@ export default function Reports() {
     const matchSearch = search === '' ||
       r.users?.name?.toLowerCase().includes(q) ||
       r.drivers?.name?.toLowerCase().includes(q) ||
-      r.issue_type?.toLowerCase().includes(q)
+      (Array.isArray(r.issue_type) ? r.issue_type : [r.issue_type]).some(t => t?.toLowerCase().includes(q))
     return matchFilter && matchSearch
   })
 
@@ -168,7 +172,7 @@ export default function Reports() {
                     </td>
                     <td>
                       <span className="text-xs font-bold uppercase tracking-wider text-navy opacity-80">
-                        {r.issue_type}
+                        {Array.isArray(r.issue_type) ? r.issue_type.join(', ') : r.issue_type}
                       </span>
                     </td>
                     <td className="text-xs text-sub max-w-[180px] truncate" title={r.description}>
@@ -247,7 +251,333 @@ export default function Reports() {
                                         'bg-green-light border-green/20'
             }`}>
               <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-0.5">Issue Type</p>
-              <p className="font-bold text-navy text-sm">{r.issue_type}</p>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {(Array.isArray(r.issue_type) ? r.issue_type : [r.issue_type]).filter(Boolean).map(t => (
+                  <span key={t} className="text-xs font-bold text-navy bg-white/60 px-2 py-0.5 rounded-full">{t}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Filed by + Against */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-surface rounded-xl p-3">
+                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                  <User size={10} /> Filed By
+                </p>
+                <div className="flex items-center gap-2">
+                  <Avatar userId={r.customer_id} initials={r.users?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'CO'} color="#1565c0" size="sm" />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{r.users?.name || '—'}</p>
+                    <p className="text-xs text-sub mt-0.5">{r.users?.email || ''}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-surface rounded-xl p-3">
+                <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                  <Car size={10} /> Against Driver
+                </p>
+                <div className="flex items-center gap-2">
+                  <Avatar userId={r.drivers?.user_id} initials={r.drivers?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'DR'} color={r.drivers?.color || 'var(--color-primary)'} size="sm" />
+                  <div>
+                    <p className="font-semibold text-sm text-navy">{r.drivers?.name || '—'}</p>
+                    <p className="text-xs text-sub font-mono mt-0.5">{r.drivers?.plate || ''}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Full description */}
+            <div className="bg-surface rounded-xl p-4">
+              <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <AlertCircle size={11} /> Full Description
+              </p>
+              <p className="text-sm text-navy leading-relaxed">
+                {r.description || 'No description provided.'}
+              </p>
+            </div>
+
+            {/* Date filed */}
+            <div className="flex items-center justify-between text-xs text-sub border-t border-border pt-3">
+              <span className="flex items-center gap-1.5">
+                <Calendar size={11} />
+                Filed on {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </span>
+              <span>{new Date(r.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+
+            {/* Resolve action */}
+            {r.status !== 'resolved' && (
+              <button
+                className="btn-primary w-full flex items-center justify-center gap-2 py-2.5"
+                onClick={() => handleResolve(r.id)}
+              >
+                <Check size={15} /> Mark as Resolved
+              </button>
+            )}
+          </div>
+        )}
+      </Modal>
+
+    </div>
+  )
+}// src/components/pages/Reports.jsx
+// Objective 4: organize reports, ratings, and complaints
+import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useAdmin } from '@/lib/AdminContext'
+import { useToastCtx } from '@/lib/ToastContext'
+import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal, Avatar } from '@/components/ui'
+import {
+  AlertTriangle, Search, CheckCircle2, Eye,
+  Check, Clock, Filter, FileText, User,
+  Car, Calendar, AlertCircle, ShieldAlert
+} from 'lucide-react'
+import Spinner from '@/components/ui/Spinner'
+
+export default function Reports() {
+  const { reports, resolveReport, updateReportStatus, stats, loading } = useAdmin()
+  const { toast } = useToastCtx()
+  const [filter,   setFilter]   = useState('all')
+  const [search,   setSearch]   = useState('')
+  const [selected, setSelected] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Issue-type breakdown — moved here from the Reports (formerly
+  // "Records") page, since it's specifically about complaints and
+  // belongs alongside the actual complaint management workflow rather
+  // than on a separate analytics/export page.
+  const byTypeSorted = useMemo(() => {
+    const byType = {}
+    reports.forEach(r => {
+      // issue_type is now an array (a report can flag multiple issues at
+      // once) — each selected type counts toward its own bucket here,
+      // rather than the whole combination being treated as one bucket.
+      const types = Array.isArray(r.issue_type) ? r.issue_type : [r.issue_type].filter(Boolean)
+      const keys = types.length > 0 ? types : ['Uncategorized']
+      keys.forEach(key => { byType[key] = (byType[key] || 0) + 1 })
+    })
+    return Object.entries(byType).sort((a, b) => b[1] - a[1])
+  }, [reports])
+
+  // Deep-link support: /reports?id=<report_id> opens that report's modal directly
+  // (used when navigating in from a notification).
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (!id || !reports.length) return
+    const match = reports.find(r => r.id === id)
+    if (match) {
+      setSelected(match)
+      const next = new URLSearchParams(searchParams)
+      next.delete('id')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, reports, setSearchParams])
+
+  const filtered = reports.filter(r => {
+    const matchFilter = filter === 'all' ? true :
+      filter === 'high' ? r.severity === 'High' : r.status === filter
+    const q = search.toLowerCase()
+    const matchSearch = search === '' ||
+      r.users?.name?.toLowerCase().includes(q) ||
+      r.drivers?.name?.toLowerCase().includes(q) ||
+      (Array.isArray(r.issue_type) ? r.issue_type : [r.issue_type]).some(t => t?.toLowerCase().includes(q))
+    return matchFilter && matchSearch
+  })
+
+  const handleResolve = async (id) => {
+    const { error } = await resolveReport(id)
+    if (error) { toast('Failed: ' + error.message, 'error'); return }
+    toast('Report resolved')
+    setSelected(null)
+  }
+
+  const r = selected
+
+  return (
+    <div className="space-y-5 page-enter">
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={<AlertCircle size={20} className="text-blue-600" />}     iconBg="bg-blue-50"     value={reports.filter(r => r.status === 'pending').length} label="Pending" />
+        <StatCard icon={<Clock size={20} className="text-amber-600" />}        iconBg="bg-amber-50"    value={reports.filter(r => r.status === 'under review').length} label="Under Review" />
+        <StatCard icon={<CheckCircle2 size={20} className="text-green" />}     iconBg="bg-green-light" value={reports.filter(r => r.status === 'resolved').length} label="Resolved" />
+        <StatCard icon={<AlertTriangle size={20} className="text-red-600" />}  iconBg="bg-red-50"      value={stats.highSeverityReports} label="High Severity" />
+      </div>
+
+      {byTypeSorted.length > 0 && (
+        <Card>
+          <CardHead title="By Issue Type" subtitle="Which categories of complaints come up most often" />
+          <div className="card-body space-y-2">
+            {byTypeSorted.map(([type, count]) => {
+              const pct = Math.round((count / reports.length) * 100)
+              return (
+                <div key={type}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-semibold text-navy">{type}</span>
+                    <span className="text-sub">{count} ({pct}%)</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-surface rounded-full overflow-hidden">
+                    <div className="h-full bg-cta rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      <Card>
+        <CardHead title="Commuter Complaints & Incidents" />
+
+        <div className="px-5 py-3 border-b border-border flex flex-wrap gap-4 items-center justify-between">
+          <div className="relative w-full max-w-xs">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-sub" />
+            <input
+              className="field-input pl-10 text-sm py-2"
+              placeholder="Search commuter, driver, issue..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter size={14} className="text-sub" />
+            <div className="flex gap-1.5 flex-wrap">
+              {['all', 'pending', 'under review', 'resolved', 'high'].map(f => (
+                <button key={f} onClick={() => setFilter(f)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
+                    filter === f ? 'bg-green text-white shadow-sm' : 'bg-surface text-sub hover:bg-border/50 hover:text-navy'
+                  }`}>
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="card-body-np">
+          {loading ? (
+            <div className="flex justify-center items-center h-48">
+              <Spinner size={32} />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-sub">
+              <FileText size={40} className="opacity-10 mb-2" />
+              <p className="text-sm font-medium">No reports found matching your criteria</p>
+            </div>
+          ) : (
+            <DataTable>
+              <thead>
+                <tr>
+                  <th>Filed By</th>
+                  <th>Against Driver</th>
+                  <th>Issue Type</th>
+                  <th>Description</th>
+                  <th>Severity</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(r => (
+                  <tr key={r.id} className="group hover:bg-surface/30 transition-colors">
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <Avatar userId={r.customer_id} initials={r.users?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'CO'} color="#1565c0" size="sm" />
+                        <span className="font-semibold text-sm text-navy">{r.users?.name || '—'}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <Avatar userId={r.drivers?.user_id} initials={r.drivers?.name?.split(' ').map(w=>w[0]).join('').slice(0,2) || 'DR'} color={r.drivers?.color || 'var(--color-primary)'} size="sm" />
+                        <span className="text-sm">{r.drivers?.name || '—'}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="text-xs font-bold uppercase tracking-wider text-navy opacity-80">
+                        {Array.isArray(r.issue_type) ? r.issue_type.join(', ') : r.issue_type}
+                      </span>
+                    </td>
+                    <td className="text-xs text-sub max-w-[180px] truncate" title={r.description}>
+                      {r.description}
+                    </td>
+                    <td><StatusBadge status={r.severity} /></td>
+                    <td className="text-xs text-sub font-mono">
+                      {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </td>
+                    <td>
+                      <select
+                        value={r.status}
+                        onChange={async e => {
+                          const { error } = await updateReportStatus(r.id, e.target.value)
+                          toast(error ? 'Failed: ' + error.message : 'Status updated', error ? 'error' : undefined)
+                        }}
+                        className="text-xs font-medium px-2 py-1 rounded-lg border border-border bg-white cursor-pointer focus:ring-2 focus:ring-green/20 outline-none"
+                      >
+                        <option value="pending">⏳ Pending</option>
+                        <option value="under review">🔍 Under Review</option>
+                        <option value="resolved">✅ Resolved</option>
+                      </select>
+                    </td>
+                    <td>
+                      <div className="flex gap-1 justify-end">
+                        <button
+                          className="p-2 text-sub hover:text-navy hover:bg-white rounded-lg transition-colors border border-transparent hover:border-border"
+                          onClick={() => setSelected(r)}
+                          title="View Details"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        {r.status !== 'resolved' && (
+                          <button
+                            className="p-2 text-green hover:bg-green-light/30 rounded-lg transition-colors border border-transparent hover:border-green/20"
+                            onClick={async () => {
+                              const { error } = await resolveReport(r.id)
+                              toast(error ? 'Failed: ' + error.message : 'Report resolved', error ? 'error' : undefined)
+                            }}
+                            title="Mark as Resolved"
+                          >
+                            <Check size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </DataTable>
+          )}
+        </div>
+      </Card>
+
+      {/* ── Report Detail Modal ── */}
+      <Modal open={!!selected} onClose={() => setSelected(null)} title="Report Detail">
+        {r && (
+          <div className="space-y-4">
+
+            {/* Severity + Status */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldAlert size={16} className={
+                  r.severity === 'High' ? 'text-brand-red' :
+                  r.severity === 'Medium' ? 'text-amber-600' : 'text-green'
+                } />
+                <StatusBadge status={r.severity} />
+              </div>
+              <StatusBadge status={r.status} />
+            </div>
+
+            {/* Issue type banner */}
+            <div className={`rounded-xl px-4 py-3 border ${
+              r.severity === 'High'   ? 'bg-red-50 border-red-100' :
+              r.severity === 'Medium' ? 'bg-amber-50 border-amber-100' :
+                                        'bg-green-light border-green/20'
+            }`}>
+              <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-0.5">Issue Type</p>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {(Array.isArray(r.issue_type) ? r.issue_type : [r.issue_type]).filter(Boolean).map(t => (
+                  <span key={t} className="text-xs font-bold text-navy bg-white/60 px-2 py-0.5 rounded-full">{t}</span>
+                ))}
+              </div>
             </div>
 
             {/* Filed by + Against */}

@@ -377,7 +377,7 @@ export function AdminProvider({ children }) {
         report_id: id,
         type: 'report',
         title: 'Report Resolved',
-        message: `Your report about "${report.issue_type}" has been resolved.`,
+        message: `Your report about "${Array.isArray(report.issue_type) ? report.issue_type.join(', ') : report.issue_type}" has been resolved.`,
       }).select().single()
       if (notifError) console.error('[resolveReport] notification insert failed:', notifError)
       if (notif) setNotifications(prev => [notif, ...prev])
@@ -399,7 +399,7 @@ export function AdminProvider({ children }) {
         report_id: id,
         type: 'report',
         title: `Report ${status}`,
-        message: `Your report about "${report.issue_type}" is now ${status}.`,
+        message: `Your report about "${Array.isArray(report.issue_type) ? report.issue_type.join(', ') : report.issue_type}" is now ${status}.`,
       }).select().single()
       if (notifError) console.error('[updateReportStatus] notification insert failed:', notifError)
       if (notif) setNotifications(prev => [notif, ...prev])
