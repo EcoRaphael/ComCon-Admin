@@ -278,7 +278,7 @@ export default function Dashboard() {
                   {reports.slice(0, 4).map(r => (
                     <tr key={r.id}>
                       <td className="font-medium">{r.users?.name || '—'}</td>
-                      <td className="text-xs text-sub">{r.issue_type}</td>
+                      <td className="text-xs text-sub">{Array.isArray(r.issue_type) ? r.issue_type.join(', ') : r.issue_type}</td>
                       <td><StatusBadge status={r.severity} /></td>
                       <td><StatusBadge status={r.status} /></td>
                     </tr>

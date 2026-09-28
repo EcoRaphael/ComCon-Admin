@@ -27,8 +27,12 @@ export default function Reports() {
   const byTypeSorted = useMemo(() => {
     const byType = {}
     reports.forEach(r => {
-      const key = r.issue_type || 'Uncategorized'
-      byType[key] = (byType[key] || 0) + 1
+      // issue_type is now an array (a report can flag multiple issues at
+      // once) — each selected type counts toward its own bucket here,
+      // rather than the whole combination being treated as one bucket.
+      const types = Array.isArray(r.issue_type) ? r.issue_type : [r.issue_type].filter(Boolean)
+      const keys = types.length > 0 ? types : ['Uncategorized']
+      keys.forEach(key => { byType[key] = (byType[key] || 0) + 1 })
     })
     return Object.entries(byType).sort((a, b) => b[1] - a[1])
   }, [reports])
@@ -54,7 +58,7 @@ export default function Reports() {
     const matchSearch = search === '' ||
       r.users?.name?.toLowerCase().includes(q) ||
       r.drivers?.name?.toLowerCase().includes(q) ||
-      r.issue_type?.toLowerCase().includes(q)
+      (Array.isArray(r.issue_type) ? r.issue_type : [r.issue_type]).some(t => t?.toLowerCase().includes(q))
     return matchFilter && matchSearch
   })
 
@@ -168,7 +172,7 @@ export default function Reports() {
                     </td>
                     <td>
                       <span className="text-xs font-bold uppercase tracking-wider text-navy opacity-80">
-                        {r.issue_type}
+                        {Array.isArray(r.issue_type) ? r.issue_type.join(', ') : r.issue_type}
                       </span>
                     </td>
                     <td className="text-xs text-sub max-w-[180px] truncate" title={r.description}>
@@ -247,7 +251,11 @@ export default function Reports() {
                                         'bg-green-light border-green/20'
             }`}>
               <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-0.5">Issue Type</p>
-              <p className="font-bold text-navy text-sm">{r.issue_type}</p>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {(Array.isArray(r.issue_type) ? r.issue_type : [r.issue_type]).filter(Boolean).map(t => (
+                  <span key={t} className="text-xs font-bold text-navy bg-white/60 px-2 py-0.5 rounded-full">{t}</span>
+                ))}
+              </div>
             </div>
 
             {/* Filed by + Against */}

@@ -157,7 +157,7 @@ function exportCSV(type, bookings, payments, toast, drivers, reports, driverPerf
   } else if (type === 'complaints') {
     csv = 'Filed By,Against Driver,Issue Type,Severity,Status,Description,Date\n'
     csv += reports.map(r =>
-      `"${r.customer?.name || r.users?.name || ''}","${r.driver?.name || r.drivers?.name || ''}","${r.issue_type}","${r.severity}","${r.status}","${(r.description || '').replace(/"/g, '""')}","${new Date(r.created_at).toLocaleDateString('en-PH')}"`
+      `"${r.customer?.name || r.users?.name || ''}","${r.driver?.name || r.drivers?.name || ''}","${(Array.isArray(r.issue_type) ? r.issue_type.join('; ') : r.issue_type)}","${r.severity}","${r.status}","${(r.description || '').replace(/"/g, '""')}","${new Date(r.created_at).toLocaleDateString('en-PH')}"`
     ).join('\n')
   } else if (type === 'performance') {
     csv = 'Driver,Plate,Vehicle Type,Completed Trips,Cancelled Trips,Cancellation Rate,Avg Rating,Rating Count\n'
