@@ -280,11 +280,15 @@ export function AdminProvider({ children }) {
       .from('drivers').select('id').eq('user_id', userId).maybeSingle()
 
     if (newDriver?.id) {
+      // Column names must match the real vehicles table: vehicle_type,
+      // model (the form's "Brand") and ltfrb_franchise (the form's "LTFRB
+      // Permit"). This used to send type/brand/ltfrb_permit, which don't
+      // exist, so the insert failed and the error was only logged.
       supabase.from('vehicles').insert({
-        driver_id: newDriver.id, plate_number: form.plate.trim().toUpperCase(), type: form.type,
+        driver_id: newDriver.id, plate_number: form.plate.trim().toUpperCase(), vehicle_type: form.type,
         color: form.color || null, year: form.year ? parseInt(form.year) : null,
-        brand: form.brand || null, or_number: form.orNumber || null,
-        cr_number: form.crNumber || null, ltfrb_permit: form.ltfrbPermit || null,
+        model: form.brand || null, or_number: form.orNumber || null,
+        cr_number: form.crNumber || null, ltfrb_franchise: form.ltfrbPermit || null,
         is_verified: false, status: 'active',
       }).then(({ error }) => {
         if (error) console.error('[addDriver] vehicle record failed:', error)

@@ -737,10 +737,10 @@ export default function Drivers() {
                   </div>
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     {[
-                      ['Plate', driverVehicle.plate_number], ['Type', driverVehicle.type],
-                      ['Brand', driverVehicle.brand || '—'], ['Year', driverVehicle.year || '—'],
+                      ['Plate', driverVehicle.plate_number], ['Type', driverVehicle.vehicle_type],
+                      ['Brand', driverVehicle.model || '—'], ['Year', driverVehicle.year || '—'],
                       ['Color', driverVehicle.color || '—'], ['OR Number', driverVehicle.or_number || '—'],
-                      ['CR Number', driverVehicle.cr_number || '—'], ['LTFRB Permit', driverVehicle.ltfrb_permit || '—'],
+                      ['CR Number', driverVehicle.cr_number || '—'], ['LTFRB Permit', driverVehicle.ltfrb_franchise || '—'],
                     ].map(([label, val]) => (
                       <div key={label} className="bg-surface rounded-card p-3">
                         <p className="text-[10px] text-sub uppercase tracking-wider font-bold mb-1">{label}</p>
