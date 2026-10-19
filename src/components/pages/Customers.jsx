@@ -3,15 +3,17 @@ import { useState } from 'react'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { Card, CardHead, StatusBadge, DataTable, Avatar, StatCard, Modal } from '@/components/ui'
-import { Users, CheckCircle2, Ban, Ticket, Search, Eye, UserX, UserCheck, Mail, Phone, MapPin, Calendar } from 'lucide-react'
+import { Users, CheckCircle2, Ban, Ticket, Search, Eye, UserX, UserCheck, Mail, Phone, MapPin, Calendar, Trash2, Loader2, AlertTriangle } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 
 export default function Customers() {
-  const { customers, bookings, toggleCustomerStatus, stats, loading } = useAdmin()
+  const { customers, bookings, toggleCustomerStatus, deleteCustomer, stats, loading } = useAdmin()
   const { toast } = useToastCtx()
   const [search,   setSearch]   = useState('')
   const [filter,   setFilter]   = useState('all')
   const [selected, setSelected] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const filtered = customers.filter(c => {
     const matchFilter = filter === 'all' ? true : c.status === filter
@@ -30,6 +32,22 @@ export default function Customers() {
     toast(`${c?.name || 'Commuter'} status updated`)
     setSelected(null)
   }
+
+  const handleDelete = async (commuter) => {
+    setDeleting(true)
+    const { error } = await deleteCustomer(commuter.id)
+    setDeleting(false)
+    if (error) { toast('Could not delete: ' + error.message, 'error'); return }
+    setConfirmDelete(null)
+    setSelected(null)
+    toast(`${commuter.name || 'Commuter'} has been deleted`)
+  }
+
+  // Rides still in progress block deletion (the database enforces it too;
+  // this just explains why in the dialog instead of after a failed click).
+  const activeRides = confirmDelete
+    ? bookings.filter(b => b.customer_id === confirmDelete.id && ['pending', 'ongoing'].includes(b.status)).length
+    : 0
 
   // Bookings for the selected customer
   const c = selected
@@ -113,6 +131,10 @@ export default function Customers() {
                         <button className="btn-ghost btn-sm flex items-center gap-1 hover:border-brand-red hover:text-brand-red"
                           onClick={() => handleToggle(c.id)}>
                           {c.status === 'active' ? <><UserX size={14} /> Suspend</> : <><UserCheck size={14} /> Activate</>}
+                        </button>
+                        <button className="btn-ghost btn-sm flex items-center gap-1 hover:border-brand-red hover:text-brand-red"
+                          onClick={() => setConfirmDelete(c)}>
+                          <Trash2 size={14} /> Delete
                         </button>
                       </div>
                     </td>
@@ -214,6 +236,57 @@ export default function Customers() {
                 : <><UserCheck size={15} /> Activate Account</>
               }
             </button>
+            <button
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-colors border border-red-200 text-brand-red hover:bg-red-50"
+              onClick={() => { setConfirmDelete(c); setSelected(null) }}
+            >
+              <Trash2 size={15} /> Delete Account
+            </button>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Confirm Delete Modal ── */}
+      <Modal open={!!confirmDelete} onClose={() => { if (!deleting) setConfirmDelete(null) }} title="Delete Commuter Account">
+        {confirmDelete && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-100">
+              <Trash2 size={20} className="text-red-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-bold text-red-800 text-sm truncate">{confirmDelete.name}</p>
+                <p className="text-red-600 text-xs mt-0.5 truncate">{confirmDelete.email || 'No email on file'}</p>
+              </div>
+            </div>
+            {activeRides > 0 ? (
+              <div className="flex gap-2.5 p-3.5 bg-amber-50 rounded-xl border border-amber-100">
+                <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  This commuter has {activeRides} ride{activeRides === 1 ? '' : 's'} in progress. Wait until it is
+                  finished or cancelled before deleting the account.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-navy leading-relaxed">
+                This permanently deletes their login, profile and photo, and they can register again later with the
+                same email. Their past rides, ratings and reports are kept, without their name.{' '}
+                <span className="font-bold text-red-600">This cannot be undone.</span>
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button className="btn-ghost py-2.5" onClick={() => setConfirmDelete(null)} disabled={deleting}>
+                Cancel
+              </button>
+              <button
+                className="btn-danger py-2.5 flex items-center justify-center gap-2 disabled:opacity-60"
+                onClick={() => handleDelete(confirmDelete)}
+                disabled={deleting || activeRides > 0}
+              >
+                {deleting
+                  ? <Loader2 size={16} className="animate-spin" />
+                  : <><Trash2 size={15} /> Delete Permanently</>
+                }
+              </button>
+            </div>
           </div>
         )}
       </Modal>

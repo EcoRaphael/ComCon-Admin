@@ -476,6 +476,25 @@ export function AdminProvider({ children }) {
     if (entry) setActivityLog(prev => [entry, ...prev].slice(0, 50))
   }, [])
 
+  // ── DELETE A COMMUTER ─────────────────────────────────────
+  // Removes the login, the profile and the photo. The database function
+  // (supabase/migrations/admin_delete_user.sql) does the login + profile —
+  // the browser can't delete a login itself — and refuses admins, the
+  // admin's own account, and anyone with a ride in progress. The photo
+  // lives in Storage, which SQL can't clean up, so it is removed here
+  // afterwards. Past rides, ratings and reports are kept without a name.
+  // (Placed after logActivity because it uses it.)
+  const deleteCustomer = useCallback(async (id) => {
+    const customer = customers.find(c => c.id === id)
+    const { error } = await supabase.rpc('admin_delete_user', { p_user_id: id })
+    if (error) return { error }
+    const { error: fileError } = await supabase.storage.from('avatar').remove([`avatar-${id}.jpg`])
+    if (fileError) console.warn('[deleteCustomer] avatar not removed:', fileError.message)
+    setCustomers(prev => prev.filter(c => c.id !== id))
+    logActivity('🗑️', `Commuter account deleted: ${customer?.name || customer?.email || 'unknown'}`)
+    return { error: null }
+  }, [customers, logActivity])
+
   // ── SCHEDULE TEMPLATE + AUTO-GENERATE ──────────────────────
   // Admin sets the default days/hours in Settings; "Auto-Generate
   // Schedules" in Schedules.jsx uses it to bulk-create one schedule row
@@ -591,7 +610,7 @@ export function AdminProvider({ children }) {
       fetchAll,
       toggleDriverStatus, verifyDriver, updateDriverDetails, addDriver, deleteDriver,
       resolveReport, updateReportStatus,
-      toggleCustomerStatus,
+      toggleCustomerStatus, deleteCustomer,
       addRoute, toggleRouteStatus,
       updateFare,
       verifyVehicle,
