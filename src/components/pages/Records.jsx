@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 import { formatDateTime, csvDateTime, fileStamp, PH_TZ } from '@/lib/timestamps'
+import TimestampCell from '@/components/ui/TimestampCell'
 
 // ── PDF generator — no external library needed, uses browser print ──────────
 function generateBookingPDF(booking) {
@@ -618,7 +619,7 @@ export default function Records() {
                     <th>Vehicle</th>
                     <th>Fare</th>
                     <th>Payment</th>
-                    <th>Date and time</th>
+                    <th>Timestamp</th>
                     <th>Status</th>
                     <th>PDF</th>
                   </tr>
@@ -646,9 +647,7 @@ export default function Records() {
                           <span className="badge-dot" />{b.payment_status}
                         </div>
                       </td>
-                      <td className="text-[11px] text-sub font-mono whitespace-nowrap">
-                        {formatDateTime(b.created_at)}
-                      </td>
+                      <td><TimestampCell value={b.created_at} /></td>
                       <td>
                         <div className={`badge ${
                           b.status === 'completed' ? 'badge-green' :

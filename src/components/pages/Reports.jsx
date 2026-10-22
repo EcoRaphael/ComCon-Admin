@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 import { formatDateTime } from '@/lib/timestamps'
+import TimestampCell from '@/components/ui/TimestampCell'
 
 export default function Reports() {
   const { reports, resolveReport, updateReportStatus, stats, loading } = useAdmin()
@@ -151,7 +152,7 @@ export default function Reports() {
                   <th>Issue Type</th>
                   <th>Description</th>
                   <th>Severity</th>
-                  <th>Date and time</th>
+                  <th>Timestamp</th>
                   <th>Status</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -180,9 +181,7 @@ export default function Reports() {
                       {r.description}
                     </td>
                     <td><StatusBadge status={r.severity} /></td>
-                    <td className="text-xs text-sub font-mono whitespace-nowrap">
-                      {formatDateTime(r.created_at)}
-                    </td>
+                    <td><TimestampCell value={r.created_at} /></td>
                     <td>
                       <select
                         value={r.status}
