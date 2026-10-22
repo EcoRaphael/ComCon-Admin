@@ -11,6 +11,7 @@ import {
   Car, Calendar, AlertCircle, ShieldAlert
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
+import { formatDateTime } from '@/lib/timestamps'
 
 export default function Reports() {
   const { reports, resolveReport, updateReportStatus, stats, loading } = useAdmin()
@@ -150,7 +151,7 @@ export default function Reports() {
                   <th>Issue Type</th>
                   <th>Description</th>
                   <th>Severity</th>
-                  <th>Date</th>
+                  <th>Date and time</th>
                   <th>Status</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -179,8 +180,8 @@ export default function Reports() {
                       {r.description}
                     </td>
                     <td><StatusBadge status={r.severity} /></td>
-                    <td className="text-xs text-sub font-mono">
-                      {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    <td className="text-xs text-sub font-mono whitespace-nowrap">
+                      {formatDateTime(r.created_at)}
                     </td>
                     <td>
                       <select
@@ -296,13 +297,24 @@ export default function Reports() {
               </p>
             </div>
 
-            {/* Date filed */}
-            <div className="flex items-center justify-between text-xs text-sub border-t border-border pt-3">
-              <span className="flex items-center gap-1.5">
-                <Calendar size={11} />
-                Filed on {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </span>
-              <span>{new Date(r.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</span>
+            {/* When it was filed, and when it was last changed (or resolved).
+                updated_at is kept current by a database trigger. It is only
+                shown once it differs from the filing time, so a complaint
+                nobody has touched does not repeat the same time twice. */}
+            <div className="text-xs text-sub border-t border-border pt-3 space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5"><Calendar size={11} /> Filed on</span>
+                <span className="font-medium text-navy">{formatDateTime(r.created_at)}</span>
+              </div>
+              {r.updated_at && Math.abs(new Date(r.updated_at) - new Date(r.created_at)) > 60000 && (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={11} /> {r.status === 'resolved' ? 'Resolved on' : 'Last updated'}
+                  </span>
+                  <span className="font-medium text-navy">{formatDateTime(r.updated_at)}</span>
+                </div>
+              )}
+              <p className="text-[10px]">All times are Philippine time.</p>
             </div>
 
             {/* Resolve action */}
