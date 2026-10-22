@@ -11,15 +11,16 @@ import {
   CheckCircle2, Award, TrendingDown, Wallet, Trophy,
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
+import { formatDateTime, csvDateTime, fileStamp, PH_TZ } from '@/lib/timestamps'
 
 // ── PDF generator — no external library needed, uses browser print ──────────
 function generateBookingPDF(booking) {
   const b = booking
   const date = new Date(b.created_at).toLocaleDateString('en-PH', {
-    month: 'long', day: 'numeric', year: 'numeric'
+    timeZone: PH_TZ, month: 'long', day: 'numeric', year: 'numeric'
   })
   const time = new Date(b.created_at).toLocaleTimeString('en-PH', {
-    hour: '2-digit', minute: '2-digit'
+    timeZone: PH_TZ, hour: '2-digit', minute: '2-digit'
   })
 
   const html = `
@@ -120,7 +121,8 @@ function generateBookingPDF(booking) {
       <div class="footer">
         CommuterConnect · Calbayog City, Western Samar<br/>
         Regulated by LTFRB Region VIII · System Monitored by LTO Calbayog<br/>
-        This is an official booking confirmation. Please keep this for your records.
+        This is an official booking confirmation. Please keep this for your records.<br/>
+        Printed on ${formatDateTime(new Date())} (Philippine time)
       </div>
 
       <script>window.onload = () => { window.print(); }</script>
@@ -134,30 +136,43 @@ function generateBookingPDF(booking) {
 }
 
 // ── CSV export (unchanged, plus compliance + complaints) ────────────────────
+// Each CSV opens with a short stamp (report name, when it was generated and
+// how many records it holds), then a blank line, then the column headings.
+// Set this to false for a plain table that starts at the headings, for
+// example when a file is going to be read by another program.
+const INCLUDE_TIMESTAMP_IN_CSV = true
+const CSV_TITLES = {
+  bookings: 'Booking Confirmations', fares: 'Fare Details Report',
+  compliance: 'Driver Compliance Report', complaints: 'Complaint Report',
+  performance: 'Driver Performance Report', earnings: 'Driver Earnings Report',
+  rides: 'Full Ride History', all: 'Master Transaction Log',
+}
+
 function exportCSV(type, bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings) {
   let csv = ''
-  const filename = `commuterconnect-${type}-${new Date().toISOString().split('T')[0]}.csv`
+  const generatedAt = new Date()
+  const filename = `commuterconnect-${type}-${fileStamp(generatedAt)}.csv`
 
   if (type === 'bookings') {
-    csv = 'Commuter,Driver,Pickup,Dropoff,Vehicle,Fare,Payment Status,Date\n'
+    csv = 'Commuter,Driver,Pickup,Dropoff,Vehicle,Fare,Payment Status,Date and Time\n'
     csv += bookings.map(b =>
-      `"${b.users?.name || ''}","${b.drivers?.name || ''}","${b.pickup}","${b.dropoff}","${b.vehicle_type}","${b.fare}","${b.payment_status}","${new Date(b.created_at).toLocaleDateString('en-PH')}"`
+      `"${b.users?.name || ''}","${b.drivers?.name || ''}","${b.pickup}","${b.dropoff}","${b.vehicle_type}","${b.fare}","${b.payment_status}","${csvDateTime(b.created_at)}"`
     ).join('\n')
   } else if (type === 'fares') {
-    csv = 'Commuter,Driver,Amount,Method,Status,Date\n'
+    csv = 'Commuter,Driver,Amount,Method,Status,Date and Time\n'
     csv += payments.map(p =>
-      `"${p.users?.name || ''}","${p.drivers?.name || ''}","${p.amount}","${p.method}","${p.status}","${new Date(p.created_at).toLocaleDateString('en-PH')}"`
+      `"${p.users?.name || ''}","${p.drivers?.name || ''}","${p.amount}","${p.method}","${p.status}","${csvDateTime(p.created_at)}"`
     ).join('\n')
   } else if (type === 'compliance') {
     csv = 'Driver,Plate,Vehicle Type,Verified,License Uploaded,OR Uploaded,CR Uploaded,Status,Registered\n'
     csv += drivers.map(d => {
       const plateReady = d.plate && !d.plate.startsWith('PENDING-')
-      return `"${d.name}","${plateReady ? d.plate : 'Pending'}","${d.vehicle_type}","${d.verified ? 'Yes' : 'No'}","${d.license_photo_path ? 'Yes' : 'No'}","${d.or_photo_path ? 'Yes' : 'No'}","${d.cr_photo_path ? 'Yes' : 'No'}","${d.status}","${new Date(d.created_at).toLocaleDateString('en-PH')}"`
+      return `"${d.name}","${plateReady ? d.plate : 'Pending'}","${d.vehicle_type}","${d.verified ? 'Yes' : 'No'}","${d.license_photo_path ? 'Yes' : 'No'}","${d.or_photo_path ? 'Yes' : 'No'}","${d.cr_photo_path ? 'Yes' : 'No'}","${d.status}","${csvDateTime(d.created_at)}"`
     }).join('\n')
   } else if (type === 'complaints') {
-    csv = 'Filed By,Against Driver,Issue Type,Severity,Status,Description,Date\n'
+    csv = 'Filed By,Against Driver,Issue Type,Severity,Status,Description,Date and Time\n'
     csv += reports.map(r =>
-      `"${r.customer?.name || r.users?.name || ''}","${r.driver?.name || r.drivers?.name || ''}","${(Array.isArray(r.issue_type) ? r.issue_type.join('; ') : r.issue_type)}","${r.severity}","${r.status}","${(r.description || '').replace(/"/g, '""')}","${new Date(r.created_at).toLocaleDateString('en-PH')}"`
+      `"${r.customer?.name || r.users?.name || ''}","${r.driver?.name || r.drivers?.name || ''}","${(Array.isArray(r.issue_type) ? r.issue_type.join('; ') : r.issue_type)}","${r.severity}","${r.status}","${(r.description || '').replace(/"/g, '""')}","${csvDateTime(r.created_at)}"`
     ).join('\n')
   } else if (type === 'performance') {
     csv = 'Driver,Plate,Vehicle Type,Completed Trips,Cancelled Trips,Cancellation Rate,Avg Rating,Rating Count\n'
@@ -170,10 +185,23 @@ function exportCSV(type, bookings, payments, toast, drivers, reports, driverPerf
       `"${d.name}","${d.plate}","${d.vehicleType}","${d.totalEarnings.toFixed(2)}","${d.paymentCount}"`
     ).join('\n')
   } else {
-    csv = 'Commuter,Driver,Pickup,Dropoff,Vehicle,Fare,Status,Date\n'
+    csv = 'Commuter,Driver,Pickup,Dropoff,Vehicle,Fare,Status,Date and Time\n'
     csv += bookings.map(b =>
-      `"${b.users?.name || ''}","${b.drivers?.name || ''}","${b.pickup}","${b.dropoff}","${b.vehicle_type}","${b.fare}","${b.status}","${new Date(b.created_at).toLocaleDateString('en-PH')}"`
+      `"${b.users?.name || ''}","${b.drivers?.name || ''}","${b.pickup}","${b.dropoff}","${b.vehicle_type}","${b.fare}","${b.status}","${csvDateTime(b.created_at)}"`
     ).join('\n')
+  }
+
+  if (INCLUDE_TIMESTAMP_IN_CSV) {
+    const sources = { bookings, fares: payments, compliance: drivers, complaints: reports, performance: driverPerformance, earnings: driverEarnings }
+    const recordCount = (sources[type] || bookings).length
+    const quote = (text) => `"${String(text).replace(/"/g, '""')}"`
+    csv = [
+      quote(`CommuterConnect: ${CSV_TITLES[type] || CSV_TITLES.all}`),
+      quote(`Generated: ${csvDateTime(generatedAt)} (Philippine time)`),
+      quote(`Records: ${recordCount}`),
+      '',
+      csv,
+    ].join('\n')
   }
 
   const blob = new Blob([csv], { type: 'text/csv' })
@@ -266,6 +294,10 @@ export default function Records() {
     return { totalDistributed, activeEarners, avgPerDriver }
   }, [driverEarnings])
 
+  // When the figures on this page were last refreshed. It moves forward
+  // whenever live data arrives, so it shows how current the page is.
+  const asOf = useMemo(() => new Date(), [bookings, payments, drivers, reports, ratings])
+
   return (
     <div className="space-y-6 page-enter">
 
@@ -307,6 +339,9 @@ export default function Records() {
               </div>
             ))}
           </div>
+          <p className="text-[11px] text-sub mt-4">
+            Data as of {formatDateTime(asOf)} (Philippine time). Every export is stamped with the time it is generated.
+          </p>
         </div>
       </Card>
 
@@ -583,7 +618,7 @@ export default function Records() {
                     <th>Vehicle</th>
                     <th>Fare</th>
                     <th>Payment</th>
-                    <th>Date</th>
+                    <th>Date and time</th>
                     <th>Status</th>
                     <th>PDF</th>
                   </tr>
@@ -611,8 +646,8 @@ export default function Records() {
                           <span className="badge-dot" />{b.payment_status}
                         </div>
                       </td>
-                      <td className="text-[11px] text-sub font-mono">
-                        {new Date(b.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      <td className="text-[11px] text-sub font-mono whitespace-nowrap">
+                        {formatDateTime(b.created_at)}
                       </td>
                       <td>
                         <div className={`badge ${
