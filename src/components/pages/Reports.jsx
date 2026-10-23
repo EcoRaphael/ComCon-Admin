@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 import { formatDateTime } from '@/lib/timestamps'
+import { SEVERITY_LEVELS, severityInfo } from '@/lib/severity'
 import TimestampCell from '@/components/ui/TimestampCell'
 
 export default function Reports() {
@@ -55,7 +56,7 @@ export default function Reports() {
 
   const filtered = reports.filter(r => {
     const matchFilter = filter === 'all' ? true :
-      filter === 'high' ? r.severity === 'High' : r.status === filter
+      ['high', 'medium', 'low'].includes(filter) ? r.severity?.toLowerCase() === filter : r.status === filter
     const q = search.toLowerCase()
     const matchSearch = search === '' ||
       r.users?.name?.toLowerCase().includes(q) ||
@@ -82,6 +83,40 @@ export default function Reports() {
         <StatCard icon={<CheckCircle2 size={20} className="text-green" />}     iconBg="bg-green-light" value={reports.filter(r => r.status === 'resolved').length} label="Resolved" />
         <StatCard icon={<AlertTriangle size={20} className="text-red-600" />}  iconBg="bg-red-50"      value={stats.highSeverityReports} label="High Severity" />
       </div>
+
+      {/* Driver Issue Severity Categories. The database rates every complaint
+          from its issue types (see src/lib/severity.js), and this explains how. */}
+      <Card>
+        <CardHead
+          title="Driver Issue Severity Categories"
+          subtitle="Every complaint is rated automatically from its issue types. A complaint with several types takes the highest level."
+        />
+        <div className="card-body grid grid-cols-1 md:grid-cols-3 gap-3">
+          {SEVERITY_LEVELS.map(s => {
+            const count = reports.filter(r => r.severity === s.level).length
+            const tone = s.level === 'High'   ? 'bg-red-50 border-red-100' :
+                         s.level === 'Medium' ? 'bg-amber-50 border-amber-100' :
+                                                'bg-green-light border-green/20'
+            return (
+              <div key={s.level} className={`rounded-xl border px-4 py-3.5 ${tone}`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <StatusBadge status={s.level} />
+                  <span className="text-xs font-bold text-navy">{count} complaint{count === 1 ? '' : 's'}</span>
+                </div>
+                <p className="text-sm font-bold text-navy leading-snug">{s.meaning}</p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {s.issueTypes.map(t => (
+                    <span key={t} className="text-[11px] font-bold text-navy bg-white/70 px-2 py-0.5 rounded-full">{t}</span>
+                  ))}
+                </div>
+                <p className="text-xs text-sub mt-2.5 leading-relaxed">
+                  <span className="font-bold text-navy">Suggested action:</span> {s.action}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      </Card>
 
       {byTypeSorted.length > 0 && (
         <Card>
@@ -121,12 +156,12 @@ export default function Reports() {
           <div className="flex items-center gap-2">
             <Filter size={14} className="text-sub" />
             <div className="flex gap-1.5 flex-wrap">
-              {['all', 'pending', 'under review', 'resolved', 'high'].map(f => (
+              {['all', 'pending', 'under review', 'resolved', 'high', 'medium', 'low'].map(f => (
                 <button key={f} onClick={() => setFilter(f)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
                     filter === f ? 'bg-green text-white shadow-sm' : 'bg-surface text-sub hover:bg-border/50 hover:text-navy'
                   }`}>
-                  {f}
+                  {['high', 'medium', 'low'].includes(f) ? `${f} severity` : f}
                 </button>
               ))}
             </div>
@@ -257,6 +292,14 @@ export default function Reports() {
                 ))}
               </div>
             </div>
+
+            {/* What this severity means, and the suggested action */}
+            {severityInfo(r.severity) && (
+              <p className="text-xs text-sub leading-relaxed">
+                <span className="font-bold text-navy">{r.severity} severity:</span> {severityInfo(r.severity).meaning}.{' '}
+                <span className="font-bold text-navy">Suggested action:</span> {severityInfo(r.severity).action}
+              </p>
+            )}
 
             {/* Filed by + Against */}
             <div className="grid grid-cols-2 gap-3">
