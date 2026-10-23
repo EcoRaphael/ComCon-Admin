@@ -495,6 +495,27 @@ export function AdminProvider({ children }) {
     return { error: null }
   }, [customers, logActivity])
 
+  // ── SET A COMPLAINT'S SEVERITY ────────────────────────────
+  // An admin's decision on a complaint's severity (Low, Medium or High). The app
+  // only sends the level: the database marks the complaint as reviewed and stamps
+  // which admin decided and when, so neither can be faked from here. Clicking the
+  // level a complaint already has confirms it. The saved row is read back so the
+  // screen shows exactly what the database stored.
+  const updateReportSeverity = useCallback(async (id, severity) => {
+    const report = reports.find(r => r.id === id)
+    const { data, error } = await supabase
+      .from('reports')
+      .update({ severity, severity_reviewed: true })
+      .eq('id', id)
+      .select('severity, severity_reviewed, severity_reviewed_by, severity_reviewed_at')
+      .single()
+    if (error) return { error }
+    setReports(prev => prev.map(r => r.id === id ? { ...r, ...data } : r))
+    const types = Array.isArray(report?.issue_type) ? report.issue_type.join(', ') : (report?.issue_type || 'complaint')
+    logActivity('⚖️', `Complaint severity set to ${data.severity}: ${types}`)
+    return { error: null }
+  }, [reports, logActivity])
+
   // ── SCHEDULE TEMPLATE + AUTO-GENERATE ──────────────────────
   // Admin sets the default days/hours in Settings; "Auto-Generate
   // Schedules" in Schedules.jsx uses it to bulk-create one schedule row
@@ -610,7 +631,7 @@ export function AdminProvider({ children }) {
       fetchAll,
       toggleDriverStatus, verifyDriver, updateDriverDetails, addDriver, deleteDriver,
       resolveReport, updateReportStatus,
-      toggleCustomerStatus, deleteCustomer,
+      toggleCustomerStatus, deleteCustomer, updateReportSeverity,
       addRoute, toggleRouteStatus,
       updateFare,
       verifyVehicle,

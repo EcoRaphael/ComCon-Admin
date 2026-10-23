@@ -12,15 +12,16 @@ import {
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 import { formatDateTime } from '@/lib/timestamps'
-import { SEVERITY_LEVELS, severityInfo } from '@/lib/severity'
+import { SEVERITY_LEVELS, OTHER_TYPE, severityInfo, needsReview } from '@/lib/severity'
 import TimestampCell from '@/components/ui/TimestampCell'
 
 export default function Reports() {
-  const { reports, resolveReport, updateReportStatus, stats, loading } = useAdmin()
+  const { reports, resolveReport, updateReportStatus, updateReportSeverity, stats, loading } = useAdmin()
   const { toast } = useToastCtx()
   const [filter,   setFilter]   = useState('all')
   const [search,   setSearch]   = useState('')
   const [selected, setSelected] = useState(null)
+  const [savingSeverity, setSavingSeverity] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Issue-type breakdown — moved here from the Reports (formerly
@@ -56,6 +57,7 @@ export default function Reports() {
 
   const filtered = reports.filter(r => {
     const matchFilter = filter === 'all' ? true :
+      filter === 'needs review' ? needsReview(r) :
       ['high', 'medium', 'low'].includes(filter) ? r.severity?.toLowerCase() === filter : r.status === filter
     const q = search.toLowerCase()
     const matchSearch = search === '' ||
@@ -65,6 +67,17 @@ export default function Reports() {
     return matchFilter && matchSearch
   })
 
+  // Complaints that include Other and are waiting for an admin to set the level
+  const needsReviewCount = reports.filter(needsReview).length
+
+  const handleSeverity = async (id, level) => {
+    setSavingSeverity(true)
+    const { error } = await updateReportSeverity(id, level)
+    setSavingSeverity(false)
+    if (error) { toast('Could not save the severity: ' + error.message, 'error'); return }
+    toast(`Severity set to ${level}`)
+  }
+
   const handleResolve = async (id) => {
     const { error } = await resolveReport(id)
     if (error) { toast('Failed: ' + error.message, 'error'); return }
@@ -72,7 +85,7 @@ export default function Reports() {
     setSelected(null)
   }
 
-  const r = selected
+  const r = selected ? (reports.find(x => x.id === selected.id) || selected) : null
 
   return (
     <div className="space-y-5 page-enter">
@@ -91,7 +104,8 @@ export default function Reports() {
           title="Driver Issue Severity Categories"
           subtitle="Every complaint is rated automatically from its issue types. A complaint with several types takes the highest level."
         />
-        <div className="card-body grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="card-body">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {SEVERITY_LEVELS.map(s => {
             const count = reports.filter(r => r.severity === s.level).length
             const tone = s.level === 'High'   ? 'bg-red-50 border-red-100' :
@@ -106,7 +120,9 @@ export default function Reports() {
                 <p className="text-sm font-bold text-navy leading-snug">{s.meaning}</p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {s.issueTypes.map(t => (
-                    <span key={t} className="text-[11px] font-bold text-navy bg-white/70 px-2 py-0.5 rounded-full">{t}</span>
+                    <span key={t} className="text-[11px] font-bold text-navy bg-white/70 px-2 py-0.5 rounded-full">
+                      {t === OTHER_TYPE ? 'Other (admin reviews)' : t}
+                    </span>
                   ))}
                 </div>
                 <p className="text-xs text-sub mt-2.5 leading-relaxed">
@@ -115,6 +131,14 @@ export default function Reports() {
               </div>
             )
           })}
+        </div>
+        <p className="text-xs text-sub mt-3 leading-relaxed">
+          <span className="font-bold text-navy">Other</span> starts at Medium until an admin reads it and sets the final level.
+          If the commuter says it put them in danger or hurt them, the complaint is High right away.
+          {needsReviewCount > 0 && (
+            <span className="font-bold text-amber-700"> {needsReviewCount} complaint{needsReviewCount === 1 ? '' : 's'} waiting for your review.</span>
+          )}
+        </p>
         </div>
       </Card>
 
@@ -156,12 +180,13 @@ export default function Reports() {
           <div className="flex items-center gap-2">
             <Filter size={14} className="text-sub" />
             <div className="flex gap-1.5 flex-wrap">
-              {['all', 'pending', 'under review', 'resolved', 'high', 'medium', 'low'].map(f => (
+              {['all', 'needs review', 'pending', 'under review', 'resolved', 'high', 'medium', 'low'].map(f => (
                 <button key={f} onClick={() => setFilter(f)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
                     filter === f ? 'bg-green text-white shadow-sm' : 'bg-surface text-sub hover:bg-border/50 hover:text-navy'
                   }`}>
-                  {['high', 'medium', 'low'].includes(f) ? `${f} severity` : f}
+                  {f === 'needs review' ? `needs review (${needsReviewCount})` :
+                   ['high', 'medium', 'low'].includes(f) ? `${f} severity` : f}
                 </button>
               ))}
             </div>
@@ -212,10 +237,14 @@ export default function Reports() {
                         {Array.isArray(r.issue_type) ? r.issue_type.join(', ') : r.issue_type}
                       </span>
                     </td>
-                    <td className="text-xs text-sub max-w-[180px] truncate" title={r.description}>
-                      {r.description}
+                    <td className="text-xs text-sub max-w-[180px] truncate" title={r.description || undefined}>
+                      {r.description || <span className="italic opacity-70">No description</span>}
                     </td>
-                    <td><StatusBadge status={r.severity} /></td>
+                    <td>
+                      <StatusBadge status={r.severity} />
+                      {r.safety_concern && <p className="text-[10px] font-bold text-red-600 mt-1">Danger reported</p>}
+                      {needsReview(r) && <p className="text-[10px] font-bold text-amber-700 mt-0.5">Needs review</p>}
+                    </td>
                     <td><TimestampCell value={r.created_at} /></td>
                     <td>
                       <select
@@ -301,6 +330,43 @@ export default function Reports() {
               </p>
             )}
 
+            {/* The commuter said it put them in danger */}
+            {r.safety_concern && (
+              <div className="flex gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-800 leading-relaxed">
+                  <span className="font-bold">The commuter said this put them in danger or hurt them.</span>{' '}
+                  It is rated High until you decide otherwise.
+                </p>
+              </div>
+            )}
+
+            {/* The admin's decision on the severity */}
+            <div className="rounded-xl border border-border p-4">
+              <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-2">Set the severity</p>
+              <div className="grid grid-cols-3 gap-2">
+                {['Low', 'Medium', 'High'].map(level => (
+                  <button key={level} type="button" disabled={savingSeverity}
+                    onClick={() => handleSeverity(r.id, level)}
+                    className={`py-2 rounded-xl border-2 text-xs font-bold transition-all disabled:opacity-60 ${
+                      r.severity !== level ? 'border-border text-sub hover:border-navy/30' :
+                      level === 'High'     ? 'border-red-400 bg-red-50 text-red-700' :
+                      level === 'Medium'   ? 'border-amber-400 bg-amber-50 text-amber-700' :
+                                             'border-green bg-green-light text-green'
+                    }`}>
+                    {level}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-sub mt-2.5 leading-relaxed">
+                {r.severity_reviewed
+                  ? `Set by an admin on ${formatDateTime(r.severity_reviewed_at)}. Click another level to change it.`
+                  : needsReview(r)
+                    ? 'Needs your review. The commuter chose Other, so this level is provisional. Click a level to set it, or click the current one to confirm it.'
+                    : 'Rated automatically from the issue types. Click a level to change it.'}
+              </p>
+            </div>
+
             {/* Filed by + Against */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface rounded-xl p-3">
@@ -335,7 +401,7 @@ export default function Reports() {
                 <AlertCircle size={11} /> Full Description
               </p>
               <p className="text-sm text-navy leading-relaxed">
-                {r.description || 'No description provided.'}
+                {r.description || 'No description. The commuter chose the issue types above.'}
               </p>
             </div>
 
