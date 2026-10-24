@@ -5,6 +5,8 @@ import { useAdmin } from '@/lib/AdminContext'
 import { StatCard, Card, CardHead, DataTable, Avatar, Modal } from '@/components/ui'
 import { Star, ThumbsUp, ThumbsDown, Search, Filter, Eye } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
+import TimestampCell from '@/components/ui/TimestampCell'
+import { formatDateTime } from '@/lib/timestamps'
 
 function StarDisplay({ value, size = 14 }) {
   return (
@@ -136,7 +138,7 @@ export default function Ratings() {
                   <th>Driver</th>
                   <th>Rating</th>
                   <th>Review</th>
-                  <th>Date</th>
+                  <th>Timestamp</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -177,9 +179,7 @@ export default function Ratings() {
                     <td className="max-w-[200px]">
                       <p className="text-xs text-sub truncate">{r.comment || '—'}</p>
                     </td>
-                    <td className="text-xs text-sub font-mono">
-                      {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </td>
+                    <td><TimestampCell value={r.created_at} /></td>
                     <td>
                       <button className="btn-ghost btn-sm flex items-center gap-1"
                         onClick={() => setSelected(r)}>
@@ -251,7 +251,7 @@ export default function Ratings() {
 
             {/* Meta */}
             <div className="flex justify-between text-xs text-sub border-t border-border pt-3">
-              <span>Submitted {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+              <span>Submitted {formatDateTime(r.created_at)} (Philippine time)</span>
               {r.booking_id && <span className="font-mono">Booking #{String(r.booking_id).slice(0,8)}</span>}
             </div>
           </div>
