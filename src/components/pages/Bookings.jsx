@@ -17,6 +17,8 @@ import {
   MapPin, User, Calendar, ArrowRight
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
+import TimestampCell from '@/components/ui/TimestampCell'
+import { formatDateTime } from '@/lib/timestamps'
 
 export default function Bookings() {
   const { bookings, stats, loading } = useAdmin()
@@ -141,7 +143,7 @@ export default function Bookings() {
               <thead>
                 <tr>
                   <th>Commuter</th><th>Driver</th><th>Route</th><th>Vehicle</th>
-                  <th>Fare</th><th>Payment</th><th>Date</th><th>Status</th><th>Actions</th>
+                  <th>Fare</th><th>Payment</th><th>Timestamp</th><th>Status</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -177,10 +179,7 @@ export default function Bookings() {
                         <span className="badge-dot" />{b.payment_status}
                       </span>
                     </td>
-                    <td className="text-xs text-sub">
-                      {new Date(b.created_at).toLocaleDateString('en-PH')}
-                      <span className="block">{new Date(b.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</span>
-                    </td>
+                    <td><TimestampCell value={b.created_at} /></td>
                     <td><StatusBadge status={b.status} /></td>
                     <td>
                       <div className="flex gap-1.5">
@@ -277,13 +276,13 @@ export default function Bookings() {
               </div>
             </div>
 
-            {/* Timestamp */}
-            <div className="flex items-center justify-between text-xs text-sub pt-1 border-t border-border">
-              <span className="flex items-center gap-1.5">
-                <Calendar size={11} />
-                {new Date(b.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </span>
-              <span>{new Date(b.created_at).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</span>
+            {/* When the ride was booked, in Philippine time */}
+            <div className="text-xs text-sub pt-2 border-t border-border space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5"><Calendar size={11} /> Booked on</span>
+                <span className="font-medium text-navy">{formatDateTime(b.created_at)}</span>
+              </div>
+              <p className="text-[10px]">All times are Philippine time.</p>
             </div>
 
           </div>

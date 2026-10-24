@@ -8,12 +8,44 @@ import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal, Avatar } from 
 import {
   AlertTriangle, Search, CheckCircle2, Eye,
   Check, Clock, Filter, FileText, User,
-  Car, Calendar, AlertCircle, ShieldAlert
+  Car, Calendar, AlertCircle, ShieldAlert, Info
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
 import { formatDateTime } from '@/lib/timestamps'
 import { SEVERITY_LEVELS, OTHER_TYPE, severityInfo, needsReview } from '@/lib/severity'
 import TimestampCell from '@/components/ui/TimestampCell'
+
+// Colors and icons for the three severity levels. Bold on purpose, to match the
+// panel's gradient banners: solid colored headers with white text. White on bright
+// amber is only 2.1:1, so Medium uses a deeper amber-to-orange header (3.2:1 or
+// better, used only for large bold text) and a dark label when it is "selected".
+// Every light-mode color has a dark-mode counterpart.
+const SEVERITY_STYLE = {
+  High: {
+    Icon: ShieldAlert,
+    header:   'from-red-600 to-red-700',
+    chip:     'border-red-500 text-red-700 dark:text-red-300',
+    accent:   'border-red-500',
+    bar:      'bg-red-400',
+    selected: 'bg-red-600 border-red-600 text-white',
+  },
+  Medium: {
+    Icon: AlertTriangle,
+    header:   'from-amber-600 to-orange-600',
+    chip:     'border-amber-500 text-amber-700 dark:text-amber-300',
+    accent:   'border-amber-500',
+    bar:      'bg-amber-400',
+    selected: 'bg-amber-500 border-amber-500 text-navy',
+  },
+  Low: {
+    Icon: Info,
+    header:   'from-green to-green-dark',
+    chip:     'border-green text-green dark:text-green-light',
+    accent:   'border-green',
+    bar:      'bg-emerald-400',
+    selected: 'bg-green border-green text-white',
+  },
+}
 
 export default function Reports() {
   const { reports, resolveReport, updateReportStatus, updateReportSeverity, stats, loading } = useAdmin()
@@ -70,6 +102,10 @@ export default function Reports() {
   // Complaints that include Other and are waiting for an admin to set the level
   const needsReviewCount = reports.filter(needsReview).length
 
+  // How the complaints split across the three levels (for the guide's numbers and bar)
+  const severityCounts = Object.fromEntries(SEVERITY_LEVELS.map(s => [s.level, reports.filter(r => r.severity === s.level).length]))
+  const severityTotal = SEVERITY_LEVELS.reduce((n, s) => n + severityCounts[s.level], 0)
+
   const handleSeverity = async (id, level) => {
     setSavingSeverity(true)
     const { error } = await updateReportSeverity(id, level)
@@ -97,50 +133,98 @@ export default function Reports() {
         <StatCard icon={<AlertTriangle size={20} className="text-red-600" />}  iconBg="bg-red-50"      value={stats.highSeverityReports} label="High Severity" />
       </div>
 
-      {/* Driver Issue Severity Categories. The database rates every complaint
-          from its issue types (see src/lib/severity.js), and this explains how. */}
-      <Card>
-        <CardHead
-          title="Driver Issue Severity Categories"
-          subtitle="Every complaint is rated automatically from its issue types. A complaint with several types takes the highest level."
-        />
-        <div className="card-body">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* Driver Issue Severity Categories. The database rates every complaint from its
+          issue types (see src/lib/severity.js); this explains how, and shows where the
+          complaints stand. */}
+      <section className="space-y-4">
+        <div className="brand-gradient rounded-xl2 px-6 py-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/10 rounded-lg text-white"><ShieldAlert size={24} /></div>
+              <div>
+                <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-0.5">How complaints are rated</p>
+                <h3 className="text-white text-xl font-black leading-tight">Driver Issue Severity Categories</h3>
+              </div>
+            </div>
+            {needsReviewCount > 0 && (
+              <span className="bg-amber-400 text-navy text-xs font-black px-3.5 py-2 rounded-full shadow-sm">
+                {needsReviewCount} complaint{needsReviewCount === 1 ? '' : 's'} waiting for your review
+              </span>
+            )}
+          </div>
+          <p className="text-white/70 text-sm mt-3 max-w-3xl leading-relaxed">
+            Every complaint is rated automatically from its issue types. A complaint with several types takes the highest level.
+          </p>
+          {severityTotal > 0 && (
+            <div className="mt-4">
+              <div className="flex h-3 rounded-full overflow-hidden bg-white/10" role="img"
+                aria-label={SEVERITY_LEVELS.map(s => `${severityCounts[s.level]} ${s.level}`).join(', ')}>
+                {SEVERITY_LEVELS.filter(s => severityCounts[s.level] > 0).map(s => (
+                  <div key={s.level} data-bar={s.level} className={SEVERITY_STYLE[s.level].bar}
+                    style={{ width: `${(severityCounts[s.level] / severityTotal) * 100}%` }} />
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2">
+                {SEVERITY_LEVELS.map(s => (
+                  <span key={s.level} className="flex items-center gap-1.5 text-xs font-bold text-white/80">
+                    <span className={`w-2.5 h-2.5 rounded-full ${SEVERITY_STYLE[s.level].bar}`} />
+                    {s.level} {severityCounts[s.level]}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {SEVERITY_LEVELS.map(s => {
-            const count = reports.filter(r => r.severity === s.level).length
-            const tone = s.level === 'High'   ? 'bg-red-50 border-red-100' :
-                         s.level === 'Medium' ? 'bg-amber-50 border-amber-100' :
-                                                'bg-green-light border-green/20'
+            const style = SEVERITY_STYLE[s.level]
+            const count = severityCounts[s.level]
             return (
-              <div key={s.level} className={`rounded-xl border px-4 py-3.5 ${tone}`}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <StatusBadge status={s.level} />
-                  <span className="text-xs font-bold text-navy">{count} complaint{count === 1 ? '' : 's'}</span>
+              <div key={s.level} data-severity={s.level}
+                className="rounded-xl2 overflow-hidden border border-border dark:border-border-dark bg-white dark:bg-card-dm shadow-sm flex flex-col">
+                <div className={`bg-gradient-to-br ${style.header} px-5 py-4 text-white flex items-center justify-between gap-3`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                      <style.Icon size={22} />
+                    </div>
+                    <p className="text-xl font-black leading-tight">{s.level}</p>
+                  </div>
+                  <p className="text-right leading-none">
+                    <span className="block text-3xl font-black">{count}</span>{' '}
+                    <span className="block text-xs font-bold mt-1">complaint{count === 1 ? '' : 's'}</span>
+                  </p>
                 </div>
-                <p className="text-sm font-bold text-navy leading-snug">{s.meaning}</p>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {s.issueTypes.map(t => (
-                    <span key={t} className="text-[11px] font-bold text-navy bg-white/70 px-2 py-0.5 rounded-full">
-                      {t === OTHER_TYPE ? 'Other (admin reviews)' : t}
-                    </span>
-                  ))}
+                <div className="p-5 flex-1 flex flex-col gap-4">
+                  <p className="text-sm font-bold text-navy dark:text-text-dark-primary leading-snug">{s.meaning}</p>
+                  <div>
+                    <p className="text-[10px] font-bold text-sub dark:text-sub-dm uppercase tracking-widest mb-2">Issue types</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {s.issueTypes.map(t => (
+                        <span key={t} className={`text-[11px] font-bold px-2.5 py-1 rounded-full border-2 ${style.chip}`}>
+                          {t === OTHER_TYPE ? 'Other (admin reviews)' : t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={`mt-auto rounded-xl px-4 py-3 border-l-4 ${style.accent} bg-surface dark:bg-bg-dark-secondary`}>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-sub dark:text-sub-dm mb-1">Suggested action</p>
+                    <p className="text-xs text-navy dark:text-text-dark-primary leading-relaxed">{s.action}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-sub mt-2.5 leading-relaxed">
-                  <span className="font-bold text-navy">Suggested action:</span> {s.action}
-                </p>
               </div>
             )
           })}
         </div>
-        <p className="text-xs text-sub mt-3 leading-relaxed">
-          <span className="font-bold text-navy">Other</span> starts at Medium until an admin reads it and sets the final level.
-          If the commuter says it put them in danger or hurt them, the complaint is High right away.
-          {needsReviewCount > 0 && (
-            <span className="font-bold text-amber-700"> {needsReviewCount} complaint{needsReviewCount === 1 ? '' : 's'} waiting for your review.</span>
-          )}
-        </p>
+
+        <div className="flex gap-3 rounded-xl2 border border-border dark:border-border-dark bg-white dark:bg-card-dm px-4 py-3.5">
+          <div className="w-8 h-8 rounded-full bg-green text-white flex items-center justify-center flex-shrink-0"><Info size={16} /></div>
+          <p className="text-xs text-sub dark:text-sub-dm leading-relaxed self-center">
+            <span className="font-bold text-navy dark:text-text-dark-primary">Other</span> starts at Medium until an admin reads it and sets the final level.
+            If the commuter says it put them in danger or hurt them, the complaint is High right away.
+          </p>
         </div>
-      </Card>
+      </section>
 
       {byTypeSorted.length > 0 && (
         <Card>
@@ -332,9 +416,9 @@ export default function Reports() {
 
             {/* The commuter said it put them in danger */}
             {r.safety_concern && (
-              <div className="flex gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-red-800 leading-relaxed">
+              <div className="flex gap-2.5 rounded-xl border-l-4 border-red-600 bg-red-50 dark:bg-red-950/40 px-4 py-3">
+                <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-800 dark:text-red-200 leading-relaxed">
                   <span className="font-bold">The commuter said this put them in danger or hurt them.</span>{' '}
                   It is rated High until you decide otherwise.
                 </p>
@@ -342,17 +426,16 @@ export default function Reports() {
             )}
 
             {/* The admin's decision on the severity */}
-            <div className="rounded-xl border border-border p-4">
-              <p className="text-[10px] font-bold text-sub uppercase tracking-wider mb-2">Set the severity</p>
+            <div className="rounded-xl border border-border dark:border-border-dark p-4">
+              <p className="text-[10px] font-bold text-sub dark:text-sub-dm uppercase tracking-wider mb-2">Set the severity</p>
               <div className="grid grid-cols-3 gap-2">
                 {['Low', 'Medium', 'High'].map(level => (
                   <button key={level} type="button" disabled={savingSeverity}
                     onClick={() => handleSeverity(r.id, level)}
-                    className={`py-2 rounded-xl border-2 text-xs font-bold transition-all disabled:opacity-60 ${
-                      r.severity !== level ? 'border-border text-sub hover:border-navy/30' :
-                      level === 'High'     ? 'border-red-400 bg-red-50 text-red-700' :
-                      level === 'Medium'   ? 'border-amber-400 bg-amber-50 text-amber-700' :
-                                             'border-green bg-green-light text-green'
+                    className={`py-2.5 rounded-xl border-2 text-xs font-black transition-all disabled:opacity-60 ${
+                      r.severity === level
+                        ? SEVERITY_STYLE[level].selected
+                        : 'border-border dark:border-border-dark text-sub dark:text-sub-dm hover:border-navy/30'
                     }`}>
                     {level}
                   </button>
