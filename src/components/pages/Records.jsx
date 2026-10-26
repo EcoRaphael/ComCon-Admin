@@ -8,15 +8,21 @@ import {
   FileSpreadsheet, History, Users, Receipt,
   Search, Calendar, ArrowRight, Download, FileText,
   ShieldCheck, ShieldAlert, ShieldQuestion, AlertTriangle,
-  CheckCircle2, Award, TrendingDown, Wallet, Trophy,
+  CheckCircle2, Award, TrendingDown, Wallet, Trophy, Loader2,
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
-import { formatDateTime, csvDateTime, fileStamp, PH_TZ } from '@/lib/timestamps'
+import { formatDateTime, PH_TZ } from '@/lib/timestamps'
+import { downloadReportPdf, loadLogo } from '@/lib/reportPdf'
 import TimestampCell from '@/components/ui/TimestampCell'
 
 // ── PDF generator — no external library needed, uses browser print ──────────
-function generateBookingPDF(booking) {
+async function generateBookingPDF(booking) {
   const b = booking
+  // Open the window right away, while the click is still "fresh", so the browser
+  // does not block it as a pop-up. It is filled in once the logo has been found.
+  const win = window.open('', '_blank', 'width=700,height=900')
+  if (!win) return
+  const logo = await loadLogo()
   const date = new Date(b.created_at).toLocaleDateString('en-PH', {
     timeZone: PH_TZ, month: 'long', day: 'numeric', year: 'numeric'
   })
@@ -35,6 +41,7 @@ function generateBookingPDF(booking) {
         body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #111; padding: 40px; max-width: 600px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 2px solid #2E7D32; }
         .brand { font-size: 22px; font-weight: 900; color: #111; }
+        .logo { width: 46px; height: 46px; object-fit: contain; margin-right: 14px; }
         .brand span { color: #2E7D32; }
         .ref { font-size: 11px; color: #777; margin-top: 4px; }
         .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -65,10 +72,13 @@ function generateBookingPDF(booking) {
     </head>
     <body>
       <div class="header">
-        <div>
-          <div class="brand">Commuter<span>Connect</span></div>
-          <div class="ref">Booking Confirmation Receipt</div>
-          <div class="ref">Ref No: ${String(b.id).slice(0,8).toUpperCase()}</div>
+        <div style="display:flex;align-items:center">
+          ${logo ? `<img class="logo" src="${logo}" alt="">` : ''}
+          <div>
+            <div class="brand">Commuter<span>Connect</span></div>
+            <div class="ref">Booking Confirmation Receipt</div>
+            <div class="ref">Ref No: ${String(b.id).slice(0,8).toUpperCase()}</div>
+          </div>
         </div>
         <div style="text-align:right">
           <span class="badge badge-${b.status}">${b.status}</span>
@@ -131,88 +141,8 @@ function generateBookingPDF(booking) {
     </html>
   `
 
-  const win = window.open('', '_blank', 'width=700,height=900')
   win.document.write(html)
   win.document.close()
-}
-
-// ── CSV export (unchanged, plus compliance + complaints) ────────────────────
-// Each CSV opens with a short stamp (report name, when it was generated and
-// how many records it holds), then a blank line, then the column headings.
-// Set this to false for a plain table that starts at the headings, for
-// example when a file is going to be read by another program.
-const INCLUDE_TIMESTAMP_IN_CSV = true
-const CSV_TITLES = {
-  bookings: 'Booking Confirmations', fares: 'Fare Details Report',
-  compliance: 'Driver Compliance Report', complaints: 'Complaint Report',
-  performance: 'Driver Performance Report', earnings: 'Driver Earnings Report',
-  rides: 'Full Ride History', all: 'Master Transaction Log',
-}
-
-function exportCSV(type, bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings) {
-  let csv = ''
-  const generatedAt = new Date()
-  const filename = `commuterconnect-${type}-${fileStamp(generatedAt)}.csv`
-
-  if (type === 'bookings') {
-    csv = 'Commuter,Driver,Pickup,Dropoff,Vehicle,Fare,Payment Status,Date and Time\n'
-    csv += bookings.map(b =>
-      `"${b.users?.name || ''}","${b.drivers?.name || ''}","${b.pickup}","${b.dropoff}","${b.vehicle_type}","${b.fare}","${b.payment_status}","${csvDateTime(b.created_at)}"`
-    ).join('\n')
-  } else if (type === 'fares') {
-    csv = 'Commuter,Driver,Amount,Method,Status,Date and Time\n'
-    csv += payments.map(p =>
-      `"${p.users?.name || ''}","${p.drivers?.name || ''}","${p.amount}","${p.method}","${p.status}","${csvDateTime(p.created_at)}"`
-    ).join('\n')
-  } else if (type === 'compliance') {
-    csv = 'Driver,Plate,Vehicle Type,Verified,License Uploaded,OR Uploaded,CR Uploaded,Status,Registered\n'
-    csv += drivers.map(d => {
-      const plateReady = d.plate && !d.plate.startsWith('PENDING-')
-      return `"${d.name}","${plateReady ? d.plate : 'Pending'}","${d.vehicle_type}","${d.verified ? 'Yes' : 'No'}","${d.license_photo_path ? 'Yes' : 'No'}","${d.or_photo_path ? 'Yes' : 'No'}","${d.cr_photo_path ? 'Yes' : 'No'}","${d.status}","${csvDateTime(d.created_at)}"`
-    }).join('\n')
-  } else if (type === 'complaints') {
-    csv = 'Filed By,Against Driver,Issue Type,Severity,Status,Description,Date and Time\n'
-    csv += reports.map(r =>
-      `"${r.customer?.name || r.users?.name || ''}","${r.driver?.name || r.drivers?.name || ''}","${(Array.isArray(r.issue_type) ? r.issue_type.join('; ') : r.issue_type)}","${r.severity}","${r.status}","${(r.description || '').replace(/"/g, '""')}","${csvDateTime(r.created_at)}"`
-    ).join('\n')
-  } else if (type === 'performance') {
-    csv = 'Driver,Plate,Vehicle Type,Completed Trips,Cancelled Trips,Cancellation Rate,Avg Rating,Rating Count\n'
-    csv += driverPerformance.map(d =>
-      `"${d.name}","${d.plate}","${d.vehicleType}","${d.completedTrips}","${d.cancelledTrips}","${d.cancellationRate}%","${d.avgRating.toFixed(1)}","${d.ratingCount}"`
-    ).join('\n')
-  } else if (type === 'earnings') {
-    csv = 'Driver,Plate,Vehicle Type,Total Earnings,Completed Payments\n'
-    csv += driverEarnings.map(d =>
-      `"${d.name}","${d.plate}","${d.vehicleType}","${d.totalEarnings.toFixed(2)}","${d.paymentCount}"`
-    ).join('\n')
-  } else {
-    csv = 'Commuter,Driver,Pickup,Dropoff,Vehicle,Fare,Status,Date and Time\n'
-    csv += bookings.map(b =>
-      `"${b.users?.name || ''}","${b.drivers?.name || ''}","${b.pickup}","${b.dropoff}","${b.vehicle_type}","${b.fare}","${b.status}","${csvDateTime(b.created_at)}"`
-    ).join('\n')
-  }
-
-  if (INCLUDE_TIMESTAMP_IN_CSV) {
-    const sources = { bookings, fares: payments, compliance: drivers, complaints: reports, performance: driverPerformance, earnings: driverEarnings }
-    const recordCount = (sources[type] || bookings).length
-    const quote = (text) => `"${String(text).replace(/"/g, '""')}"`
-    csv = [
-      quote(`CommuterConnect: ${CSV_TITLES[type] || CSV_TITLES.all}`),
-      quote(`Generated: ${csvDateTime(generatedAt)} (Philippine time)`),
-      quote(`Records: ${recordCount}`),
-      '',
-      csv,
-    ].join('\n')
-  }
-
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-  toast(`${type} exported as CSV`)
 }
 
 export default function Records() {
@@ -299,6 +229,27 @@ export default function Records() {
   // whenever live data arrives, so it shows how current the page is.
   const asOf = useMemo(() => new Date(), [bookings, payments, drivers, reports, ratings])
 
+  // Reports are real PDF files: a branded header with the logo, the summary on
+  // top, then the details (see src/lib/reportPdf.js). Only one can be built at a
+  // time, and the button that was pressed says "Preparing..." until it is saved.
+  const [exporting, setExporting] = useState(null)
+  const exportReport = async (type) => {
+    if (exporting) return
+    setExporting(type)
+    try {
+      const { title, count } = await downloadReportPdf(type, { bookings, payments, drivers, reports, driverPerformance, driverEarnings })
+      toast(`${title} saved as PDF (${count} record${count === 1 ? '' : 's'})`)
+    } catch (err) {
+      console.error('[exportReport]', err)
+      toast('Could not create the PDF: ' + (err?.message || 'unknown error'), 'error')
+    } finally {
+      setExporting(null)
+    }
+  }
+  const exportLabel = (type, text = 'Export PDF') => exporting === type
+    ? <><Loader2 size={14} className="animate-spin" /> Preparing...</>
+    : <><Download size={14} /> {text}</>
+
   return (
     <div className="space-y-6 page-enter">
 
@@ -332,16 +283,17 @@ export default function Records() {
                   <p className="text-[11px] text-sub leading-relaxed mb-4">{item.desc}</p>
                 </div>
                 <button
-                  className="btn-primary btn-sm w-full py-2 flex items-center justify-center gap-2"
-                  onClick={() => exportCSV(item.type, bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}
+                  className="btn-primary btn-sm w-full py-2 flex items-center justify-center gap-2 disabled:opacity-60"
+                  onClick={() => exportReport(item.type)}
+                  disabled={!!exporting}
                 >
-                  <Download size={14} /> Export CSV
+                  {exportLabel(item.type)}
                 </button>
               </div>
             ))}
           </div>
           <p className="text-[11px] text-sub mt-4">
-            Data as of {formatDateTime(asOf)} (Philippine time). Every export is stamped with the time it is generated.
+            Data as of {formatDateTime(asOf)} (Philippine time). Every export is a PDF stamped with the time it is generated.
           </p>
         </div>
       </Card>
@@ -352,8 +304,8 @@ export default function Records() {
           title="Driver Compliance Report"
           subtitle="Verification and documentation status — regulatory oversight snapshot"
           action={
-            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('compliance', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
-              <Download size={14} /> Export CSV
+            <button className="btn-ghost btn-sm flex items-center gap-2 disabled:opacity-60" onClick={() => exportReport('compliance')} disabled={!!exporting}>
+              {exportLabel('compliance')}
             </button>
           }
         />
@@ -433,8 +385,8 @@ export default function Records() {
           title="Driver Performance Report"
           subtitle="Trip completion, cancellation rate, and ratings per driver"
           action={
-            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('performance', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
-              <Download size={14} /> Export CSV
+            <button className="btn-ghost btn-sm flex items-center gap-2 disabled:opacity-60" onClick={() => exportReport('performance')} disabled={!!exporting}>
+              {exportLabel('performance')}
             </button>
           }
         />
@@ -512,8 +464,8 @@ export default function Records() {
           title="Driver Earnings Report"
           subtitle="Confirmed payments per driver, all-time"
           action={
-            <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('earnings', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
-              <Download size={14} /> Export CSV
+            <button className="btn-ghost btn-sm flex items-center gap-2 disabled:opacity-60" onClick={() => exportReport('earnings')} disabled={!!exporting}>
+              {exportLabel('earnings')}
             </button>
           }
         />
@@ -597,8 +549,8 @@ export default function Records() {
                   onChange={e => setDateFilter(e.target.value)}
                 />
               </div>
-              <button className="btn-ghost btn-sm flex items-center gap-2" onClick={() => exportCSV('all', bookings, payments, toast, drivers, reports, driverPerformance, driverEarnings)}>
-                <Download size={14} /> Export All
+              <button className="btn-ghost btn-sm flex items-center gap-2 disabled:opacity-60" onClick={() => exportReport('all')} disabled={!!exporting}>
+                {exportLabel('all', 'Export All (PDF)')}
               </button>
             </div>
           }
