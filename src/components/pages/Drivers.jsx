@@ -8,6 +8,7 @@ import {
   StatCard, Card, CardHead, StatusBadge, DataTable, 
   Avatar, Modal, Field, EmptyState 
 } from '@/components/ui'
+import { TableSkeleton, DetailSkeleton, DocsSkeleton } from '@/components/ui/Skeleton'
 import { 
   User, 
   Car, 
@@ -244,25 +245,25 @@ export default function Drivers() {
 
       {/* Stats Section */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
+        <StatCard loading={loading} 
           icon={<CheckCircle2 className="text-green-600 w-5 h-5" />} 
           iconBg="bg-green-50" 
           value={stats.activeDrivers} 
           label="Active" 
         />
-        <StatCard 
+        <StatCard loading={loading} 
           icon={<Power className="text-red-500 w-5 h-5" />} 
           iconBg="bg-red-50" 
           value={drivers.filter(d => d.status === 'inactive').length} 
           label="Off Duty" 
         />
-        <StatCard 
+        <StatCard loading={loading} 
           icon={<ShieldCheck className="text-blue-500 w-5 h-5" />} 
           iconBg="bg-blue-50" 
           value={drivers.filter(d => d.verified).length} 
           label="Verified" 
         />
-        <StatCard 
+        <StatCard loading={loading} 
           icon={<AlertCircle className="text-amber-500 w-5 h-5" />} 
           iconBg="bg-amber-50" 
           value={stats.unverifiedDrivers} 
@@ -304,9 +305,7 @@ export default function Drivers() {
 
         <div className="card-body-np">
           {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <Loader2 className="w-8 h-8 text-green animate-spin" />
-            </div>
+            <TableSkeleton headers={['Driver', 'Vehicle', 'Plate', 'Route', 'Driver Verified', 'Rating', 'Status', 'Actions']} rows={6} avatar label="Loading drivers" />
           ) : filtered.length === 0 ? (
             /* FIX: Icon wrapped in centered flex container */
             <EmptyState 
@@ -719,9 +718,7 @@ export default function Drivers() {
           {activeTab === 'vehicle' && (
             <>
               {loadingVehicle ? (
-                <div className="flex justify-center items-center h-32">
-                  <Loader2 className="w-6 h-6 text-green animate-spin" />
-                </div>
+                <DetailSkeleton label="Loading vehicle details" />
               ) : driverVehicle ? (
                 <>
                   <div className={`rounded-xl p-3 mb-4 flex items-center gap-3 ${
@@ -767,9 +764,7 @@ export default function Drivers() {
           {activeTab === 'documents' && (
             <>
               {loadingDocs ? (
-                <div className="flex justify-center items-center h-32">
-                  <Loader2 className="w-6 h-6 text-green animate-spin" />
-                </div>
+                <DocsSkeleton label="Loading documents" />
               ) : (
                 <div className="space-y-3">
                   {[

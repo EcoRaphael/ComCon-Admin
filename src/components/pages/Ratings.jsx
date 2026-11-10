@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useAdmin } from '@/lib/AdminContext'
 import { StatCard, Card, CardHead, DataTable, Avatar, Modal } from '@/components/ui'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Star, ThumbsUp, ThumbsDown, Search, Filter, Eye } from 'lucide-react'
-import Spinner from '@/components/ui/Spinner'
 import TimestampCell from '@/components/ui/TimestampCell'
 import { formatDateTime } from '@/lib/timestamps'
 
@@ -57,10 +57,10 @@ export default function Ratings() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Star size={20} />}       iconBg="bg-amber-50"    value={avgScore} label="Platform Avg Rating" />
-        <StatCard icon={<Star size={20} />}       iconBg="bg-green-light" value={total}    label="Total Reviews" />
-        <StatCard icon={<ThumbsUp size={20} />}   iconBg="bg-blue-50"     value={positive} label="Positive (4–5 ★)" />
-        <StatCard icon={<ThumbsDown size={20} />} iconBg="bg-red-50"      value={negative} label="Negative (1–2 ★)" />
+        <StatCard loading={loading} icon={<Star size={20} />}       iconBg="bg-amber-50"    value={avgScore} label="Platform Avg Rating" />
+        <StatCard loading={loading} icon={<Star size={20} />}       iconBg="bg-green-light" value={total}    label="Total Reviews" />
+        <StatCard loading={loading} icon={<ThumbsUp size={20} />}   iconBg="bg-blue-50"     value={positive} label="Positive (4–5 ★)" />
+        <StatCard loading={loading} icon={<ThumbsDown size={20} />} iconBg="bg-red-50"      value={negative} label="Negative (1–2 ★)" />
       </div>
 
       {/* Driver leaderboard */}
@@ -121,9 +121,7 @@ export default function Ratings() {
 
         <div className="card-body-np">
           {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <Spinner size={32} />
-            </div>
+            <TableSkeleton headers={['Commuter', 'Driver', 'Rating', 'Review', 'Timestamp', 'Actions']} rows={6} avatar label="Loading ratings" />
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-sub">
               <Star size={40} className="opacity-10 mb-3" />

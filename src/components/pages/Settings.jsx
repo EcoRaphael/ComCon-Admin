@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useToastCtx } from '@/lib/ToastContext'
 import { useAdmin } from '@/lib/AdminContext'
 import { Card, CardHead } from '@/components/ui'
+import { FormSkeleton } from '@/components/ui/Skeleton'
 import { supabase } from '@/lib/supabase/client'
 import {
   Settings as SettingsIcon,
@@ -345,7 +346,7 @@ export default function Settings() {
             />
             <div className="p-4 space-y-4">
               {loadingTemplate ? (
-                <p className="text-xs text-sub">Loading...</p>
+                <FormSkeleton />
               ) : (
                 <>
                   <div>

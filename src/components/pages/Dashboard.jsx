@@ -17,7 +17,7 @@ import {
   Truck,
 } from 'lucide-react'
 import { StatCard, Card, CardHead, StatusBadge, DataTable, Avatar } from '@/components/ui'
-import Spinner from '@/components/ui/Spinner'
+import { TableSkeleton, ListSkeleton, ChartSkeleton } from '@/components/ui/Skeleton'
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, AreaChart, Area,
@@ -97,10 +97,10 @@ export default function Dashboard() {
 
       {/* Stat cards - Emojis replaced with Lucide Components */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Car size={20} className="text-green" />} iconBg="bg-green-light" value={stats.activeDrivers}  label="Active Drivers"  trendUp />
-        <StatCard icon={<Users size={20} className="text-blue-600" />} iconBg="bg-blue-50"     value={stats.totalCustomers} label="Commuters"       trendUp />
-        <StatCard icon={<Ticket size={20} className="text-amber-600" />} iconBg="bg-amber-50"    value={stats.totalBookings}  label="Total Bookings"  trendUp />
-        <StatCard icon={<AlertTriangle size={20} className="text-red-600" />} iconBg="bg-red-50"      value={stats.openReports}    label="Open Complaints" trendUp={false} />
+        <StatCard loading={loading} icon={<Car size={20} className="text-green" />} iconBg="bg-green-light" value={stats.activeDrivers}  label="Active Drivers"  trendUp />
+        <StatCard loading={loading} icon={<Users size={20} className="text-blue-600" />} iconBg="bg-blue-50"     value={stats.totalCustomers} label="Commuters"       trendUp />
+        <StatCard loading={loading} icon={<Ticket size={20} className="text-amber-600" />} iconBg="bg-amber-50"    value={stats.totalBookings}  label="Total Bookings"  trendUp />
+        <StatCard loading={loading} icon={<AlertTriangle size={20} className="text-red-600" />} iconBg="bg-red-50"      value={stats.openReports}    label="Open Complaints" trendUp={false} />
       </div>
 
       {/* Verification alerts */}
@@ -160,9 +160,7 @@ export default function Dashboard() {
               once there's a clear need for period-over-period tracking. */}
           <div className="lg:col-span-2 p-5 h-[220px]">
             {loading ? (
-              <div className="h-full flex items-center justify-center">
-                <Spinner size={22} />
-              </div>
+              <ChartSkeleton label="Loading revenue chart" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={weeklyStats}>
@@ -233,9 +231,7 @@ export default function Dashboard() {
           />
           <div className="card-body-np">
             {loading ? (
-              <div className="flex justify-center items-center h-32">
-                <Spinner size={22} />
-              </div>
+              <TableSkeleton headers={['Commuter', 'Vehicle', 'Fare', 'Status']} rows={4} label="Loading recent bookings" />
             ) : (
               <DataTable>
                 <thead>
@@ -266,9 +262,7 @@ export default function Dashboard() {
           />
           <div className="card-body-np">
             {loading ? (
-              <div className="flex justify-center items-center h-32">
-                <Spinner size={22} />
-              </div>
+              <TableSkeleton headers={['Commuter', 'Issue', 'Severity', 'Status']} rows={4} label="Loading recent complaints" />
             ) : (
               <DataTable>
                 <thead>
@@ -302,9 +296,7 @@ export default function Dashboard() {
           />
           <div className="card-body divide-y divide-border">
             {loading ? (
-              <div className="flex justify-center items-center h-32">
-                <Spinner size={22} />
-              </div>
+              <ListSkeleton rows={4} divided label="Loading top drivers" />
             ) : (
               drivers
                 .filter(d => d.status === 'active')
@@ -343,9 +335,7 @@ export default function Dashboard() {
           <CardHead title="System Activity Log" />
           <div className="card-body space-y-3">
             {loading ? (
-              <div className="flex justify-center items-center h-32">
-                <Spinner size={22} />
-              </div>
+              <ListSkeleton rows={5} label="Loading activity" />
             ) : activityLog.length === 0 ? (
               <p className="text-center text-sub py-6 text-sm">No activity yet</p>
             ) : (

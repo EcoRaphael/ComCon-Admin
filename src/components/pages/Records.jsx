@@ -4,13 +4,13 @@ import { useState, useMemo } from 'react'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { Card, CardHead, DataTable, StatCard } from '@/components/ui'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import {
   FileSpreadsheet, History, Users, Receipt,
   Search, Calendar, ArrowRight, Download, FileText,
   ShieldCheck, ShieldAlert, ShieldQuestion, AlertTriangle,
   CheckCircle2, Award, TrendingDown, Wallet, Trophy, Loader2,
 } from 'lucide-react'
-import Spinner from '@/components/ui/Spinner'
 import { formatDateTime, PH_TZ } from '@/lib/timestamps'
 import { downloadReportPdf, loadLogo } from '@/lib/reportPdf'
 import TimestampCell from '@/components/ui/TimestampCell'
@@ -254,10 +254,10 @@ export default function Records() {
     <div className="space-y-6 page-enter">
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<History       size={20} className="text-green"      />} iconBg="bg-green-light" value={completed.length}                label="Completed Rides"   />
-        <StatCard icon={<Receipt       size={20} className="text-blue-600"  />} iconBg="bg-blue-50"    value={`₱${totalFare.toLocaleString()}`} label="Confirmed Fares"   />
-        <StatCard icon={<FileSpreadsheet size={20} className="text-amber-600"/>} iconBg="bg-amber-50"   value={stats.totalBookings}              label="Total Records"     />
-        <StatCard icon={<Users         size={20} className="text-purple-600"/>} iconBg="bg-purple-50"  value={stats.totalCustomers}             label="Commuter Records"  />
+        <StatCard loading={loading} icon={<History       size={20} className="text-green"      />} iconBg="bg-green-light" value={completed.length}                label="Completed Rides"   />
+        <StatCard loading={loading} icon={<Receipt       size={20} className="text-blue-600"  />} iconBg="bg-blue-50"    value={`₱${totalFare.toLocaleString()}`} label="Confirmed Fares"   />
+        <StatCard loading={loading} icon={<FileSpreadsheet size={20} className="text-amber-600"/>} iconBg="bg-amber-50"   value={stats.totalBookings}              label="Total Records"     />
+        <StatCard loading={loading} icon={<Users         size={20} className="text-purple-600"/>} iconBg="bg-purple-50"  value={stats.totalCustomers}             label="Commuter Records"  />
       </div>
 
       {/* Export cards */}
@@ -557,9 +557,7 @@ export default function Records() {
         />
         <div className="card-body-np overflow-hidden">
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <Spinner size={32} />
-            </div>
+            <TableSkeleton headers={['Commuter', 'Driver', 'Route Detail', 'Vehicle', 'Fare', 'Payment', 'Timestamp', 'Status', 'PDF']} rows={6} label="Loading ride records" />
           ) : (
             <div className="overflow-x-auto">
               <DataTable>

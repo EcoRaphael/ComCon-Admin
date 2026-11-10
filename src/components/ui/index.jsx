@@ -4,17 +4,18 @@ import { useEffect, useState } from 'react'
 // All small reusable UI primitives
 
 import clsx from 'clsx'
+import { Skeleton } from '/Skeleton'
 import { supabase } from '@/lib/supabase/client'
 
 /* ── Badge ── */
 export function Badge({ children, variant = 'gray', className }) {
   const variants = {
-    green: 'badge-green',
-    red: 'badge-red',
-    amber: 'badge-amber',
-    blue: 'badge-blue',
+    green:  'badge-green',
+    red:    'badge-red',
+    amber:  'badge-amber',
+    blue:   'badge-blue',
     purple: 'badge-purple',
-    gray: 'badge-gray',
+    gray:   'badge-gray',
   }
   return (
     <span className={clsx(variants[variant] || 'badge-gray', className)}>
@@ -27,18 +28,18 @@ export function Badge({ children, variant = 'gray', className }) {
 /* ── Status Badge (maps strings → variants) ── */
 export function StatusBadge({ status }) {
   const map = {
-    active: { v: 'green', label: 'Active' },
-    inactive: { v: 'red', label: 'Off Duty' },
-    completed: { v: 'green', label: 'Completed' },
-    ongoing: { v: 'blue', label: 'Ongoing' },
-    pending: { v: 'amber', label: 'Pending' },
-    cancelled: { v: 'red', label: 'Cancelled' },
-    resolved: { v: 'green', label: 'Resolved' },
+    active:       { v: 'green',  label: 'Active' },
+    inactive:     { v: 'red',    label: 'Off Duty' },
+    completed:    { v: 'green',  label: 'Completed' },
+    ongoing:      { v: 'blue',   label: 'Ongoing' },
+    pending:      { v: 'amber',  label: 'Pending' },
+    cancelled:    { v: 'red',    label: 'Cancelled' },
+    resolved:     { v: 'green',  label: 'Resolved' },
     'under review': { v: 'blue', label: 'Under Review' },
-    suspended: { v: 'red', label: 'Suspended' },
-    High: { v: 'red', label: 'High' },
-    Medium: { v: 'amber', label: 'Medium' },
-    Low: { v: 'green', label: 'Low' },
+    suspended:    { v: 'red',    label: 'Suspended' },
+    High:         { v: 'red',    label: 'High' },
+    Medium:       { v: 'amber',  label: 'Medium' },
+    Low:          { v: 'green',  label: 'Low' },
   }
   const { v, label } = map[status] || { v: 'gray', label: status }
   return <Badge variant={v}>{label}</Badge>
@@ -72,20 +73,22 @@ export function Avatar({ initials, color, size = 'md', className, userId }) {
 }
 
 /* ── Stat Card ── */
-export function StatCard({ icon, iconBg, value, label, trend, trendUp }) {
+export function StatCard({ icon, iconBg, value, label, trend, trendUp, loading }) {
   return (
-    <div className="stat-card animate-fade-in">
+    <div className="stat-card animate-fade-in" aria-busy={loading || undefined}>
       <div className="flex items-center justify-between mb-3">
         <div className={clsx('w-11 h-11 rounded-xl flex items-center justify-center text-xl', iconBg || 'bg-green-light')}>
           {icon}
         </div>
-        {trend && (
+        {trend && !loading && (
           <span className={clsx('text-xs font-bold px-2 py-1 rounded-lg', trendUp ? 'bg-green-light text-green' : 'bg-red-50 text-brand-red')}>
             {trend}
           </span>
         )}
       </div>
-      <p className="text-2xl font-black text-navy leading-none">{value}</p>
+      {loading
+        ? <Skeleton className="h-6 w-20" />   // same height as the number it stands in for
+        : <p className="text-2xl font-black text-navy leading-none">{value}</p>}
       <p className="text-sm text-sub mt-1">{label}</p>
     </div>
   )

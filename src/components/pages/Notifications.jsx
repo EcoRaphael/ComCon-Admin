@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard } from '@/components/ui'
+import { ListSkeleton } from '@/components/ui/Skeleton'
 import { 
   Bell, 
   Megaphone, 
@@ -224,10 +225,10 @@ export default function Notifications() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={<Bell       size={18} className="text-sub"         />} iconBg="bg-slate-100"              value={stats.total}               label="Total Events"   />
-        <StatCard icon={<ShieldAlert size={18} className="text-red-600"    />} iconBg="bg-red-50"                 value={stats.unread}               label="Pending Review" />
-        <StatCard icon={<CheckCheck  size={18} className="text-green"      />} iconBg="bg-green-light"            value={stats.total - stats.unread} label="Processed"      />
-        <StatCard icon={<Megaphone   size={18} className="text-amber-600"  />} iconBg="bg-amber-50"               value={stats.alerts}               label="System Alerts"  />
+        <StatCard loading={loading} icon={<Bell       size={18} className="text-sub"         />} iconBg="bg-slate-100"              value={stats.total}               label="Total Events"   />
+        <StatCard loading={loading} icon={<ShieldAlert size={18} className="text-red-600"    />} iconBg="bg-red-50"                 value={stats.unread}               label="Pending Review" />
+        <StatCard loading={loading} icon={<CheckCheck  size={18} className="text-green"      />} iconBg="bg-green-light"            value={stats.total - stats.unread} label="Processed"      />
+        <StatCard loading={loading} icon={<Megaphone   size={18} className="text-amber-600"  />} iconBg="bg-amber-50"               value={stats.alerts}               label="System Alerts"  />
       </div>
 
       {/* Broadcast Form */}
@@ -310,7 +311,7 @@ export default function Notifications() {
 
         <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
           {loading ? (
-             <div className="p-12 text-center text-sub animate-pulse">Loading activity streams...</div>
+             <ListSkeleton rows={6} padded label="Loading activity" />
           ) : filtered.length === 0 ? (
             <div className="p-12 text-center text-sub">No matching activity found.</div>
           ) : (

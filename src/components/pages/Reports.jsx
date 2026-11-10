@@ -5,12 +5,12 @@ import { useSearchParams } from 'react-router-dom'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal, Avatar } from '@/components/ui'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import {
   AlertTriangle, Search, CheckCircle2, Eye,
   Check, Clock, Filter, FileText, User,
   Car, Calendar, AlertCircle, ShieldAlert, Info
 } from 'lucide-react'
-import Spinner from '@/components/ui/Spinner'
 import { formatDateTime } from '@/lib/timestamps'
 import { SEVERITY_LEVELS, OTHER_TYPE, severityInfo, needsReview } from '@/lib/severity'
 import TimestampCell from '@/components/ui/TimestampCell'
@@ -127,10 +127,10 @@ export default function Reports() {
     <div className="space-y-5 page-enter">
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<AlertCircle size={20} className="text-blue-600" />}     iconBg="bg-blue-50"     value={reports.filter(r => r.status === 'pending').length} label="Pending" />
-        <StatCard icon={<Clock size={20} className="text-amber-600" />}        iconBg="bg-amber-50"    value={reports.filter(r => r.status === 'under review').length} label="Under Review" />
-        <StatCard icon={<CheckCircle2 size={20} className="text-green" />}     iconBg="bg-green-light" value={reports.filter(r => r.status === 'resolved').length} label="Resolved" />
-        <StatCard icon={<AlertTriangle size={20} className="text-red-600" />}  iconBg="bg-red-50"      value={stats.highSeverityReports} label="High Severity" />
+        <StatCard loading={loading} icon={<AlertCircle size={20} className="text-blue-600" />}     iconBg="bg-blue-50"     value={reports.filter(r => r.status === 'pending').length} label="Pending" />
+        <StatCard loading={loading} icon={<Clock size={20} className="text-amber-600" />}        iconBg="bg-amber-50"    value={reports.filter(r => r.status === 'under review').length} label="Under Review" />
+        <StatCard loading={loading} icon={<CheckCircle2 size={20} className="text-green" />}     iconBg="bg-green-light" value={reports.filter(r => r.status === 'resolved').length} label="Resolved" />
+        <StatCard loading={loading} icon={<AlertTriangle size={20} className="text-red-600" />}  iconBg="bg-red-50"      value={stats.highSeverityReports} label="High Severity" />
       </div>
 
       {/* Driver Issue Severity Categories. The database rates every complaint from its
@@ -279,9 +279,7 @@ export default function Reports() {
 
         <div className="card-body-np">
           {loading ? (
-            <div className="flex justify-center items-center h-48">
-              <Spinner size={32} />
-            </div>
+            <TableSkeleton headers={['Filed By', 'Against Driver', 'Issue Type', 'Description', 'Severity', 'Timestamp', 'Status', 'Actions']} rows={6} avatar label="Loading complaints" />
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-sub">
               <FileText size={40} className="opacity-10 mb-2" />

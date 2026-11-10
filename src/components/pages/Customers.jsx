@@ -3,8 +3,8 @@ import { useState } from 'react'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { Card, CardHead, StatusBadge, DataTable, Avatar, StatCard, Modal } from '@/components/ui'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { Users, CheckCircle2, Ban, Ticket, Search, Eye, UserX, UserCheck, Mail, Phone, MapPin, Calendar, Trash2, Loader2, AlertTriangle } from 'lucide-react'
-import Spinner from '@/components/ui/Spinner'
 
 export default function Customers() {
   const { customers, bookings, toggleCustomerStatus, deleteCustomer, stats, loading } = useAdmin()
@@ -61,10 +61,10 @@ export default function Customers() {
   return (
     <div className="space-y-5 page-enter">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Users size={20} />}       iconBg="bg-green-light" value={stats.totalCustomers}  label="Total Commuters" />
-        <StatCard icon={<CheckCircle2 size={20} />} iconBg="bg-blue-50"    value={stats.activeCustomers} label="Active" />
-        <StatCard icon={<Ban size={20} />}          iconBg="bg-red-50"     value={customers.filter(c => c.status === 'suspended').length} label="Suspended" />
-        <StatCard icon={<Ticket size={20} />}       iconBg="bg-amber-50"   value={stats.totalBookings}   label="Total Bookings" />
+        <StatCard loading={loading} icon={<Users size={20} />}       iconBg="bg-green-light" value={stats.totalCustomers}  label="Total Commuters" />
+        <StatCard loading={loading} icon={<CheckCircle2 size={20} />} iconBg="bg-blue-50"    value={stats.activeCustomers} label="Active" />
+        <StatCard loading={loading} icon={<Ban size={20} />}          iconBg="bg-red-50"     value={customers.filter(c => c.status === 'suspended').length} label="Suspended" />
+        <StatCard loading={loading} icon={<Ticket size={20} />}       iconBg="bg-amber-50"   value={stats.totalBookings}   label="Total Bookings" />
       </div>
 
       <Card>
@@ -91,9 +91,7 @@ export default function Customers() {
 
         <div className="card-body-np">
           {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <Spinner size={32} />
-            </div>
+            <TableSkeleton headers={['Commuter', 'Phone', 'Address', 'Member Since', 'Status', 'Actions']} rows={6} avatar label="Loading commuters" />
           ) : (
             <DataTable>
               <thead>

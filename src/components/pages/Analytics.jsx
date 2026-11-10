@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useAdmin } from '@/lib/AdminContext'
 import { StatCard, Card, CardHead, ProgressBar } from '@/components/ui'
+import { ChartSkeleton, ProgressSkeleton } from '@/components/ui/Skeleton'
 import { 
   TrendingUp, 
   Map as MapIcon, 
@@ -22,7 +23,7 @@ const VEHICLE_COLORS = {
 }
 
 export default function Analytics() {
-  const { bookings, payments, stats } = useAdmin()
+  const { bookings, payments, stats, loading } = useAdmin()
 
   // Build last 7 days chart data from real bookings
   const weeklyData = useMemo(() => {
@@ -87,26 +88,26 @@ export default function Analytics() {
     <div className="space-y-6 page-enter">
       {/* Overview Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
+        <StatCard loading={loading} 
           icon={<TrendingUp size={20} />} 
           iconBg="bg-green-light text-green" 
           value={`₱${stats.totalRevenue.toLocaleString()}`} 
           label="Total Revenue" 
           trendUp 
         />
-        <StatCard 
+        <StatCard loading={loading} 
           icon={<Zap size={20} />} 
           iconBg="bg-blue-50 text-blue-600" 
           value={stats.totalBookings} 
           label="Total Bookings" 
         />
-        <StatCard 
+        <StatCard loading={loading} 
           icon={<Star size={20} />} 
           iconBg="bg-amber-50 text-amber-600" 
           value={stats.avgRating} 
           label="Platform Rating" 
         />
-        <StatCard 
+        <StatCard loading={loading} 
           icon={<MapIcon size={20} className="text-purple-600" />} 
           iconBg="bg-purple-50" 
           value={stats.totalRoutes} 
@@ -122,6 +123,7 @@ export default function Analytics() {
             subtitle="7-day activity monitor" 
           />
           <div className="card-body h-[250px] pt-4">
+            {loading ? <ChartSkeleton label="Loading daily ride volume" /> : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={weeklyData} barSize={32}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -150,6 +152,7 @@ export default function Analytics() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
@@ -160,6 +163,7 @@ export default function Analytics() {
             subtitle="Daily transaction records (₱)" 
           />
           <div className="card-body h-[250px] pt-4">
+            {loading ? <ChartSkeleton label="Loading revenue performance" /> : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={weeklyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -189,6 +193,7 @@ export default function Analytics() {
                 />
               </LineChart>
             </ResponsiveContainer>
+            )}
           </div>
         </Card>
       </div>
@@ -200,7 +205,7 @@ export default function Analytics() {
           subtitle="Breakdown of native Calbayog City transport types" 
         />
         <div className="card-body grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-          {vehicleBreakdown.map(({ label, count, pct, color }) => (
+          {loading ? <ProgressSkeleton rows={3} /> : vehicleBreakdown.map(({ label, count, pct, color }) => (
             <div key={label} className="group">
               <div className="flex justify-between items-end mb-2">
                 <div>
@@ -230,7 +235,9 @@ export default function Analytics() {
           subtitle="All-time bookings by hour of day — when demand is highest"
         />
         <div className="card-body h-[260px] pt-6">
-          {bookings.length === 0 ? (
+          {loading ? (
+            <ChartSkeleton label="Loading peak hours" />
+          ) : bookings.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sub text-sm">
               No booking data yet.
             </div>

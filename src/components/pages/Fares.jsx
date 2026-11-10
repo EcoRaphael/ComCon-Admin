@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { Card, CardHead, DataTable } from '@/components/ui'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { 
   Calculator, 
   Settings2, 
@@ -16,7 +17,6 @@ import {
   Save,
   RefreshCw
 } from 'lucide-react'
-import Spinner from '@/components/ui/Spinner'
 
 const VEHICLE_TYPES = ['Tricycle', 'Timbol', 'Multicab']
 
@@ -85,9 +85,7 @@ export default function Fares() {
           />
           <div className="card-body-np">
             {loading ? (
-              <div className="flex justify-center items-center h-48">
-                <Spinner size={32} />
-              </div>
+              <TableSkeleton headers={['Vehicle Type', 'Base Fare', 'Per KM', 'Peak']} rows={3} label="Loading fares" />
             ) : (
               <DataTable>
                 <thead>

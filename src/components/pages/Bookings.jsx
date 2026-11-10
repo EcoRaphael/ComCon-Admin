@@ -11,12 +11,12 @@ import { useSearchParams } from 'react-router-dom'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard, Card, CardHead, StatusBadge, DataTable, Modal, Avatar } from '@/components/ui'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import {
   CheckCircle2, Clock, XCircle, Activity, Search,
   Eye, Wallet, Car, Bus,
   MapPin, User, Calendar, ArrowRight
 } from 'lucide-react'
-import Spinner from '@/components/ui/Spinner'
 import TimestampCell from '@/components/ui/TimestampCell'
 import { formatDateTime } from '@/lib/timestamps'
 
@@ -78,10 +78,10 @@ export default function Bookings() {
     <div className="space-y-5 page-enter">
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<CheckCircle2 size={20} />} iconBg="bg-green-light" value={counts.completed} label="Completed" trendUp />
-        <StatCard icon={<Activity size={20} />}     iconBg="bg-blue-50"     value={counts.ongoing}   label="Ongoing" />
-        <StatCard icon={<Clock size={20} />}        iconBg="bg-amber-50"    value={counts.pending}   label="Pending" />
-        <StatCard icon={<XCircle size={20} />}      iconBg="bg-red-50"      value={counts.cancelled} label="Cancelled" />
+        <StatCard loading={loading} icon={<CheckCircle2 size={20} />} iconBg="bg-green-light" value={counts.completed} label="Completed" trendUp />
+        <StatCard loading={loading} icon={<Activity size={20} />}     iconBg="bg-blue-50"     value={counts.ongoing}   label="Ongoing" />
+        <StatCard loading={loading} icon={<Clock size={20} />}        iconBg="bg-amber-50"    value={counts.pending}   label="Pending" />
+        <StatCard loading={loading} icon={<XCircle size={20} />}      iconBg="bg-red-50"      value={counts.cancelled} label="Cancelled" />
       </div>
 
       {/* Revenue banner */}
@@ -135,9 +135,7 @@ export default function Bookings() {
 
         <div className="card-body-np">
           {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <Spinner size={32} />
-            </div>
+            <TableSkeleton headers={['Commuter', 'Driver', 'Route', 'Vehicle', 'Fare', 'Payment', 'Timestamp', 'Status', 'Actions']} rows={6} avatar label="Loading bookings" />
           ) : (
             <DataTable>
               <thead>

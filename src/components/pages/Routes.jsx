@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard, Card, CardHead, DataTable, EmptyState } from '@/components/ui'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 // Import Lucide icons
 import { 
   Map, 
@@ -18,7 +19,6 @@ import {
   PowerOff,
   Navigation
 } from 'lucide-react'
-import Spinner from '@/components/ui/Spinner'
 
 const VEHICLE_TYPES = ['Tricycle', 'Timbol', 'Multicab']
 
@@ -75,9 +75,9 @@ export default function Routes() {
   return (
     <div className="space-y-5 page-enter">
       <div className="grid grid-cols-3 gap-4">
-        <StatCard icon={<Map size={20} />}     iconBg="bg-green-light" value={activeRoutes.length}   label="Active Routes" />
-        <StatCard icon={<Car size={20} />}     iconBg="bg-blue-50"     value={tricycleRoutes.length} label="Tricycle Routes" />
-        <StatCard icon={<Bus size={20} />}     iconBg="bg-amber-50"    value={timbolRoutes.length}    label="Timbol Routes" />
+        <StatCard loading={loading} icon={<Map size={20} />}     iconBg="bg-green-light" value={activeRoutes.length}   label="Active Routes" />
+        <StatCard loading={loading} icon={<Car size={20} />}     iconBg="bg-blue-50"     value={tricycleRoutes.length} label="Tricycle Routes" />
+        <StatCard loading={loading} icon={<Bus size={20} />}     iconBg="bg-amber-50"    value={timbolRoutes.length}    label="Timbol Routes" />
       </div>
 
       <Card>
@@ -92,9 +92,7 @@ export default function Routes() {
         />
         <div className="card-body-np">
           {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <Spinner size={32} />
-            </div>
+            <TableSkeleton headers={['Route Name', 'Origin', 'Destination', 'Distance', 'Vehicle Types', 'Status', 'Actions']} rows={5} label="Loading routes" />
           ) : routes.length === 0 ? (
             <EmptyState icon={<MapPin size={40} className="text-sub" />} title="No routes yet" subtitle="Add your first Calbayog City route" />
           ) : (

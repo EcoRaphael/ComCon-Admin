@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useAdmin } from '@/lib/AdminContext'
 import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard, Modal } from '@/components/ui'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import Spinner from '@/components/ui/Spinner'
 import {
   Calendar,
@@ -328,10 +329,10 @@ export default function Schedules() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard icon={<Calendar size={20} className="text-green" />} iconBg="bg-green-light" value={schedules.length} label="Total Schedules" />
-        <StatCard icon={<CheckCircle2 size={20} className="text-blue-600" />} iconBg="bg-blue-50" value={activeCount} label="Active" />
-        <StatCard icon={<Car size={20} className="text-amber-600" />} iconBg="bg-amber-50" value={uniqueDrivers} label="Drivers Scheduled" />
-        <StatCard icon={<PauseCircle size={20} className="text-red-600" />} iconBg="bg-red-50" value={schedules.length - activeCount} label="Paused" />
+        <StatCard loading={loading} icon={<Calendar size={20} className="text-green" />} iconBg="bg-green-light" value={schedules.length} label="Total Schedules" />
+        <StatCard loading={loading} icon={<CheckCircle2 size={20} className="text-blue-600" />} iconBg="bg-blue-50" value={activeCount} label="Active" />
+        <StatCard loading={loading} icon={<Car size={20} className="text-amber-600" />} iconBg="bg-amber-50" value={uniqueDrivers} label="Drivers Scheduled" />
+        <StatCard loading={loading} icon={<PauseCircle size={20} className="text-red-600" />} iconBg="bg-red-50" value={schedules.length - activeCount} label="Paused" />
       </div>
 
       {/* Add form */}
@@ -429,8 +430,8 @@ export default function Schedules() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex justify-center items-center h-48">
-          <Spinner size={32} />
+        <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+          <TableSkeleton headers={['Driver', 'Day', 'Hours', 'Duration', 'Status', 'Actions']} rows={6} avatar label="Loading schedules" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-sub bg-white rounded-xl border border-border">

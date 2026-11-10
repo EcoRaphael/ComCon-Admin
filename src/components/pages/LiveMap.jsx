@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAdmin } from '@/lib/AdminContext'
 import { Card, CardHead } from '@/components/ui'
+import { MapSkeleton } from '@/components/ui/Skeleton'
 
 import { MapContainer, TileLayer, LayersControl, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -11,7 +12,6 @@ import 'leaflet/dist/leaflet.css'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-import Spinner from '@/components/ui/Spinner'
 
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -123,9 +123,7 @@ export default function LiveMap() {
         />
         <div className="p-3 md:p-6">
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <Spinner size={32} />
-            </div>
+            <MapSkeleton />
           ) : (
             <>
               {/* Map Container */}
