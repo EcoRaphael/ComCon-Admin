@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useToastCtx } from '@/lib/ToastContext'
 import { StatCard } from '@/components/ui'
-import Spinner from '@/components/ui/Spinner'
+import { Skeleton, SkeletonRegion } from '@/components/ui/Skeleton'
 import { 
   Download, 
   Search, 
@@ -151,10 +151,10 @@ export default function Payments() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<CreditCard size={20} />} iconBg="bg-blue-50 text-blue-600" value={stats.total} label="Total Transactions" />
-        <StatCard icon={<CheckCircle2 size={20} />} iconBg="bg-green-light text-green" value={`₱${stats.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`} label="Confirmed Revenue" />
-        <StatCard icon={<Clock size={20} />} iconBg="bg-amber-50 text-amber-600" value={`₱${stats.pending.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`} label="Pending Collection" />
-        <StatCard icon={<RefreshCcw size={20} />} iconBg="bg-red-50 text-red-600" value={stats.refunded} label="Total Refunds" />
+        <StatCard loading={loading} icon={<CreditCard size={20} />} iconBg="bg-blue-50 text-blue-600" value={stats.total} label="Total Transactions" />
+        <StatCard loading={loading} icon={<CheckCircle2 size={20} />} iconBg="bg-green-light text-green" value={`₱${stats.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`} label="Confirmed Revenue" />
+        <StatCard loading={loading} icon={<Clock size={20} />} iconBg="bg-amber-50 text-amber-600" value={`₱${stats.pending.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`} label="Pending Collection" />
+        <StatCard loading={loading} icon={<RefreshCcw size={20} />} iconBg="bg-red-50 text-red-600" value={stats.refunded} label="Total Refunds" />
       </div>
 
       {/* Filters & Tools */}
@@ -194,19 +194,63 @@ export default function Payments() {
               </button>
             ))}
           </div>
-          <p className="text-[11px] font-bold text-sub uppercase tracking-wider">
-            Showing {filtered.length} Records
-          </p>
+          {loading
+            ? <SkeletonRegion label="Loading record count"><Skeleton className="h-3 w-28" /></SkeletonRegion>
+            : (
+              <p className="text-[11px] font-bold text-sub uppercase tracking-wider">
+                Showing {filtered.length} Records
+              </p>
+            )}
         </div>
       </div>
 
       {/* Main Table */}
       <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-3">
-            <Spinner size={40} />
-            <p className="text-sm text-sub animate-pulse">Syncing fare records...</p>
-          </div>
+          <SkeletonRegion label="Loading payments" className="overflow-x-auto">
+            <table className="w-full text-sm" aria-hidden="true">
+              <thead>
+                <tr className="border-b border-border bg-surface text-left">
+                  <th className="px-5 py-4 text-sub font-bold uppercase text-[10px] tracking-widest">Client & Trip</th>
+                  <th className="px-5 py-4 text-sub font-bold uppercase text-[10px] tracking-widest">Provider</th>
+                  <th className="px-5 py-4 text-sub font-bold uppercase text-[10px] tracking-widest">Payment</th>
+                  <th className="px-5 py-4 text-sub font-bold uppercase text-[10px] tracking-widest">Status</th>
+                  <th className="px-5 py-4 text-sub font-bold uppercase text-[10px] tracking-widest">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <tr key={i}>
+                    <td className="px-5 py-4">
+                      <div className="space-y-2">
+                        <Skeleton className={`h-3.5 ${['w-32', 'w-28', 'w-36'][i % 3]}`} />
+                        <Skeleton className="h-3 w-44" />
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="space-y-2">
+                        <Skeleton className={`h-3.5 ${['w-28', 'w-24', 'w-32'][i % 3]}`} />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-3 w-14" />
+                      </div>
+                    </td>
+                    <td className="px-5 py-4"><Skeleton className="h-6 w-20 rounded-full" /></td>
+                    <td className="px-5 py-4">
+                      <div className="space-y-2">
+                        <Skeleton className="h-3 w-24" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </SkeletonRegion>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-sub opacity-60">
             <XCircle size={48} strokeWidth={1} />
